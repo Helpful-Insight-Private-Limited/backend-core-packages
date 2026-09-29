@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
-import { createHttpLoggerMiddleware } from '@core/logger';
-import { createI18nMiddleware } from '@core/i18n';
-import { createNotificationRouter } from '@core/notifications';
-import { createTemplateRouter } from '@core/email-templates';
+import { createHttpLoggerMiddleware } from '@rohit-jain11/logger';
+import { createI18nMiddleware } from '@rohit-jain11/i18n';
+import { createNotificationRouter } from '@rohit-jain11/notifications';
+import { createTemplateRouter } from '@rohit-jain11/email-templates';
 
 import {
   logger,
@@ -32,10 +32,10 @@ export function createApp() {
   // Custom Response Envelope & Decorators
   app.use(responseEnvelopeMiddleware());
 
-  // Package: @core/logger (Request correlation ID & Audit tracking)
+  // Package: @rohit-jain11/logger (Request correlation ID & Audit tracking)
   app.use(createHttpLoggerMiddleware({ logger, auditService, logBody: true }));
 
-  // Package: @core/i18n (Language detection via Header / Query / Profile)
+  // Package: @rohit-jain11/i18n (Language detection via Header / Query / Profile)
   app.use(createI18nMiddleware({ service: i18nService }));
 
   // Swagger Documentation

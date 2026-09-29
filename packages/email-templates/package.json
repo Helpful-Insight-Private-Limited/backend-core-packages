@@ -1,5 +1,5 @@
 {
-  "name": "@core/email-templates",
+  "name": "@rohit-jain11/email-templates",
   "version": "1.0.0",
   "description": "Responsive, dynamic, and editable email templates engine with File, DB (Prisma), and Memory stores",
   "main": "./dist/index.js",
@@ -37,5 +37,15 @@
     "express": {
       "optional": true
     }
+  },
+  "author": "Rohit Jain",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "directory": "packages/email-templates"
   }
 }

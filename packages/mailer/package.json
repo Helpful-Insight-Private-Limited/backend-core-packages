@@ -1,5 +1,5 @@
 {
-  "name": "@core/mailer",
+  "name": "@rohit-jain11/mailer",
   "version": "1.0.0",
   "description": "Unified enterprise mail service with SMTP, AWS SES, SendGrid, Mailgun, and Memory adapters",
   "main": "./dist/index.js",
@@ -28,5 +28,15 @@
     "tsup": "^8.3.6",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
+  },
+  "author": "Rohit Jain",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "directory": "packages/mailer"
   }
 }

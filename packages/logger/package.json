@@ -1,5 +1,5 @@
 {
-  "name": "@core/logger",
+  "name": "@rohit-jain11/logger",
   "version": "1.0.0",
   "description": "High-performance Pino logger, request/response tracer, and compliance audit trail system for Express",
   "main": "./dist/index.js",
@@ -38,5 +38,15 @@
     "express": {
       "optional": true
     }
+  },
+  "author": "Rohit Jain",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "directory": "packages/logger"
   }
 }

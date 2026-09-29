@@ -13,19 +13,19 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@core/auth": "workspace:*",
-    "@core/email-templates": "workspace:*",
-    "@core/i18n": "workspace:*",
-    "@core/logger": "workspace:*",
-    "@core/mailer": "workspace:*",
-    "@core/notifications": "workspace:*",
-    "@core/rbac": "workspace:*",
-    "@core/validator": "workspace:*",
     "@prisma/client": "^6.4.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "@rohit-jain11/auth": "workspace:*",
+    "@rohit-jain11/email-templates": "workspace:*",
+    "@rohit-jain11/i18n": "workspace:*",
+    "@rohit-jain11/logger": "workspace:*",
+    "@rohit-jain11/mailer": "workspace:*",
+    "@rohit-jain11/notifications": "workspace:*",
+    "@rohit-jain11/rbac": "workspace:*",
+    "@rohit-jain11/validator": "workspace:*"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

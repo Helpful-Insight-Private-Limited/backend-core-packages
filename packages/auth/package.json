@@ -1,5 +1,5 @@
 {
-  "name": "@core/auth",
+  "name": "@rohit-jain11/auth",
   "version": "1.0.0",
   "description": "Enterprise Authentication System with JWT Access/Refresh tokens, Token Rotation, Argon2/Bcrypt, MFA/TOTP, and OAuth 2.0 helpers",
   "main": "./dist/index.js",
@@ -43,5 +43,15 @@
     "express": {
       "optional": true
     }
+  },
+  "author": "Rohit Jain",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "directory": "packages/auth"
   }
 }

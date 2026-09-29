@@ -181,33 +181,33 @@ importers:
 
   examples/express-prisma-api:
     dependencies:
-      '@core/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@core/email-templates':
-        specifier: workspace:*
-        version: link:../../packages/email-templates
-      '@core/i18n':
-        specifier: workspace:*
-        version: link:../../packages/i18n
-      '@core/logger':
-        specifier: workspace:*
-        version: link:../../packages/logger
-      '@core/mailer':
-        specifier: workspace:*
-        version: link:../../packages/mailer
-      '@core/notifications':
-        specifier: workspace:*
-        version: link:../../packages/notifications
-      '@core/rbac':
-        specifier: workspace:*
-        version: link:../../packages/rbac
-      '@core/validator':
-        specifier: workspace:*
-        version: link:../../packages/validator
       '@prisma/client':
         specifier: ^6.4.1
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@rohit-jain11/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@rohit-jain11/email-templates':
+        specifier: workspace:*
+        version: link:../../packages/email-templates
+      '@rohit-jain11/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@rohit-jain11/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
+      '@rohit-jain11/mailer':
+        specifier: workspace:*
+        version: link:../../packages/mailer
+      '@rohit-jain11/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
+      '@rohit-jain11/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
+      '@rohit-jain11/validator':
+        specifier: workspace:*
+        version: link:../../packages/validator
       cors:
         specifier: ^2.8.5
         version: 2.8.6

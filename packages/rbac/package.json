@@ -1,5 +1,5 @@
 {
-  "name": "@core/rbac",
+  "name": "@rohit-jain11/rbac",
   "version": "1.0.0",
   "description": "Enterprise Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC) with wildcard permissions and Express guards",
   "main": "./dist/index.js",
@@ -36,5 +36,15 @@
     "express": {
       "optional": true
     }
+  },
+  "author": "Rohit Jain",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "directory": "packages/rbac"
   }
 }
