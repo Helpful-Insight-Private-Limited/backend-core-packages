@@ -1,0 +1,153 @@
+// Prisma Schema combining all enterprise modules:
+// Auth, RBAC, Audit Logging, Email Templates, and Notifications.
+// Works out of the box with SQLite for local development,
+// and easily switches to PostgreSQL or MySQL for production.
+
+datasource db {
+  provider = "sqlite" // Change to "postgresql" or "mysql" in production
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// 1. AUTHENTICATION & USERS
+// -------------------------------------------------------------
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String?
+  name            String?
+  phone           String?
+  avatarUrl       String?
+  language        String         @default("en")
+  isEmailVerified Boolean        @default(false)
+  isMfaEnabled    Boolean        @default(false)
+  mfaSecret       String?
+  mfaBackupCodes  String?        // JSON array of strings
+  googleId        String?        @unique
+  githubId        String?        @unique
+  refreshTokens   RefreshToken[]
+  roles           UserRole[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceInfo String?
+  isRevoked  Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+// -------------------------------------------------------------
+// 2. RBAC & PERMISSION SYSTEM
+// -------------------------------------------------------------
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  permissions RolePermission[]
+  users       UserRole[]
+  createdAt   DateTime         @default(now())
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  action      String           @unique // e.g., "users:read", "users:delete", "*"
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId    String
+  roleId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, roleId])
+}
+
+// -------------------------------------------------------------
+// 3. API LOGGING & AUDIT TRAIL SYSTEM
+// -------------------------------------------------------------
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actorType  String   @default("user")
+  action     String
+  resource   String
+  targetId   String?
+  status     String   @default("SUCCESS")
+  ipAddress  String?
+  userAgent  String?
+  oldValues  String?  // JSON string
+  newValues  String?  // JSON string
+  metadata   String?  // JSON string
+  timestamp  DateTime @default(now())
+
+  @@index([resource, targetId])
+  @@index([actorId])
+  @@index([timestamp])
+}
+
+// -------------------------------------------------------------
+// 4. EDITABLE EMAIL TEMPLATES SYSTEM
+// -------------------------------------------------------------
+model EmailTemplate {
+  name        String   @id
+  subject     String
+  html        String
+  text        String?
+  variables   String?  // JSON array of variable names
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// -------------------------------------------------------------
+// 5. NOTIFICATION SYSTEM
+// -------------------------------------------------------------
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  category  String    @default("system")
+  title     String
+  message   String
+  data      String?   // JSON object string
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, isRead])
+}
+
+model NotificationPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  category  String
+  channel   String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, category, channel])
+}
