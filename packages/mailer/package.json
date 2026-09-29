@@ -2,14 +2,14 @@
   "name": "@core/mailer",
   "version": "1.0.0",
   "description": "Unified enterprise mail service with SMTP, AWS SES, SendGrid, Mailgun, and Memory adapters",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.js"
     }
   },
   "files": [

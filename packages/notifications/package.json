@@ -2,14 +2,14 @@
   "name": "@core/notifications",
   "version": "1.0.0",
   "description": "Enterprise Multi-Channel Notification Service (In-App, Email, Push, Webhooks) with user channel preferences and SSE streaming",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.js"
     }
   },
   "files": [

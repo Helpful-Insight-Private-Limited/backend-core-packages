@@ -2,14 +2,14 @@
   "name": "@core/logger",
   "version": "1.0.0",
   "description": "High-performance Pino logger, request/response tracer, and compliance audit trail system for Express",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.js"
     }
   },
   "files": [
