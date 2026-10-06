@@ -15,6 +15,19 @@ describe('@core/validator', () => {
     it('should reject invalid email formats', () => {
       expect(EmailValidator.isValid('not-an-email')).toBe(false);
       expect(EmailValidator.isValid('missing-domain@')).toBe(false);
+      expect(EmailValidator.isValid('!123456@gmail.com')).toBe(false);
+      expect(EmailValidator.isValid('.username@example.com')).toBe(false);
+      expect(EmailValidator.isValid('user..name@example.com')).toBe(false);
+    });
+
+    it('should enforce provider-specific rules for Gmail', () => {
+      const res = EmailValidator.validate('!123456@gmail.com');
+      expect(res.isValid).toBe(false);
+      expect(res.error).toBe('Email username must start with a letter or number');
+
+      const symbolInGmail = EmailValidator.validate('user!name@gmail.com');
+      expect(symbolInGmail.isValid).toBe(false);
+      expect(symbolInGmail.error).toContain('Gmail usernames can only contain letters, numbers, and periods');
     });
 
     it('should reject disposable emails by default', () => {
@@ -47,6 +60,33 @@ describe('@core/validator', () => {
     it('should fail on invalid numbers', () => {
       const res = PhoneValidator.validate('12345', 'US');
       expect(res.isValid).toBe(false);
+
+      const fakeIndianNumber = PhoneValidator.validate('+911111111111');
+      expect(fakeIndianNumber.isValid).toBe(false);
+      expect(fakeIndianNumber.error).toContain('Phone number is invalid');
+    });
+
+    it('should detect and reject dummy numbers when disallowDummy is enabled', () => {
+      // UK valid mobile format, but contains sequential 123456
+      const seqCheck = PhoneValidator.validate('+447912345678', { disallowDummy: true });
+      expect(seqCheck.isValid).toBe(false);
+      expect(seqCheck.error).toContain('predictable dummy sequence');
+
+      // Repeated identical digits
+      const repeatCheck = PhoneValidator.validate('+919999999999', { disallowDummy: true });
+      expect(repeatCheck.isValid).toBe(false);
+      expect(repeatCheck.error).toContain('repeated dummy digits');
+
+      // Valid random mobile passes
+      const validCheck = PhoneValidator.validate('+447918492015', { disallowDummy: true });
+      expect(validCheck.isValid).toBe(true);
+    });
+
+    it('should enforce mobileOnly when requested', () => {
+      // US Google fixed-line or toll-free vs mobile
+      const res = PhoneValidator.validate('+447918492015', { mobileOnly: true });
+      expect(res.isValid).toBe(true);
+      expect(res.numberType).toBe('MOBILE');
     });
   });
 

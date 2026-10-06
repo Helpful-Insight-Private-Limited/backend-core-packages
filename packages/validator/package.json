@@ -1,6 +1,6 @@
 {
   "name": "@rohit-jain11/validator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Enterprise-grade form field validator for Email, All-Country Phone Numbers, and Strong Passwords with suggestions",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

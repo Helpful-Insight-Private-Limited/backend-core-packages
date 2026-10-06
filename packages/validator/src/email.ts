@@ -1,6 +1,8 @@
 export interface EmailValidationOptions {
   allowDisposable?: boolean;
   checkTypo?: boolean;
+  requireAlphanumericStartEnd?: boolean;
+  validateProviderRules?: boolean;
 }
 
 export interface EmailValidationResult {
@@ -71,6 +73,58 @@ export class EmailValidator {
     const [localPart, domainPart] = parts;
     const lowerDomain = domainPart.toLowerCase();
     const normalizedEmail = `${localPart}@${lowerDomain}`;
+
+    // Modern web validation: Local-part should start and end with alphanumeric characters
+    if (options.requireAlphanumericStartEnd !== false) {
+      if (!/^[a-zA-Z0-9]/.test(localPart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username must start with a letter or number'
+        };
+      }
+      const basePart = localPart.includes('+') ? localPart.split('+')[0] : localPart;
+      if (!/[a-zA-Z0-9]$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username must end with a letter or number'
+        };
+      }
+      if (localPart.includes('..')) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username cannot contain consecutive dots'
+        };
+      }
+    }
+
+    // Provider-specific rules (e.g. Gmail only allows letters, numbers, and periods)
+    if (options.validateProviderRules !== false) {
+      if (lowerDomain === 'gmail.com' || lowerDomain === 'googlemail.com') {
+        const basePart = localPart.includes('+') ? localPart.split('+')[0] : localPart;
+        if (/[^a-zA-Z0-9.]/.test(basePart)) {
+          return {
+            isValid: false,
+            normalizedEmail,
+            domain: lowerDomain,
+            error: 'Gmail usernames can only contain letters, numbers, and periods'
+          };
+        }
+        if (basePart.length < 6 || basePart.length > 30) {
+          return {
+            isValid: false,
+            normalizedEmail,
+            domain: lowerDomain,
+            error: 'Gmail username must be between 6 and 30 characters'
+          };
+        }
+      }
+    }
 
     const isDisposable = COMMON_DISPOSABLE_DOMAINS.has(lowerDomain);
     if (!options.allowDisposable && isDisposable) {

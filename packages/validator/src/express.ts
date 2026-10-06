@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { EmailValidator, EmailValidationOptions } from './email.js';
-import { PhoneValidator } from './phone.js';
+import { PhoneValidator, PhoneValidationOptions } from './phone.js';
 import { PasswordValidator, PasswordPolicy } from './password.js';
-import { CountryCode } from 'libphonenumber-js';
+import { CountryCode } from 'libphonenumber-js/max';
 
 export interface FieldValidationRules {
   email?: boolean | EmailValidationOptions;
-  phone?: boolean | { defaultCountry?: CountryCode };
+  phone?: boolean | PhoneValidationOptions;
   password?: boolean | PasswordPolicy;
   required?: boolean;
 }
@@ -60,9 +60,9 @@ export function validateRequest(schema: RequestValidationSchema): RequestHandler
 
         // Phone validation
         if (rule.phone) {
-          const defaultCountry =
-            typeof rule.phone === 'object' ? rule.phone.defaultCountry : undefined;
-          const result = PhoneValidator.validate(String(val), defaultCountry);
+          const phoneOpts =
+            typeof rule.phone === 'object' ? rule.phone : undefined;
+          const result = PhoneValidator.validate(String(val), phoneOpts);
           if (!result.isValid) {
             errors[fieldKey] = errors[fieldKey] || [];
             errors[fieldKey].push(result.error || 'Invalid phone number');

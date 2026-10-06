@@ -47,6 +47,54 @@ var EmailValidator = class {
     const [localPart, domainPart] = parts;
     const lowerDomain = domainPart.toLowerCase();
     const normalizedEmail = `${localPart}@${lowerDomain}`;
+    if (options.requireAlphanumericStartEnd !== false) {
+      if (!/^[a-zA-Z0-9]/.test(localPart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username must start with a letter or number"
+        };
+      }
+      const basePart = localPart.includes("+") ? localPart.split("+")[0] : localPart;
+      if (!/[a-zA-Z0-9]$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username must end with a letter or number"
+        };
+      }
+      if (localPart.includes("..")) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username cannot contain consecutive dots"
+        };
+      }
+    }
+    if (options.validateProviderRules !== false) {
+      if (lowerDomain === "gmail.com" || lowerDomain === "googlemail.com") {
+        const basePart = localPart.includes("+") ? localPart.split("+")[0] : localPart;
+        if (/[^a-zA-Z0-9.]/.test(basePart)) {
+          return {
+            isValid: false,
+            normalizedEmail,
+            domain: lowerDomain,
+            error: "Gmail usernames can only contain letters, numbers, and periods"
+          };
+        }
+        if (basePart.length < 6 || basePart.length > 30) {
+          return {
+            isValid: false,
+            normalizedEmail,
+            domain: lowerDomain,
+            error: "Gmail username must be between 6 and 30 characters"
+          };
+        }
+      }
+    }
     const isDisposable = COMMON_DISPOSABLE_DOMAINS.has(lowerDomain);
     if (!options.allowDisposable && isDisposable) {
       return {
@@ -78,17 +126,19 @@ var EmailValidator = class {
 // src/phone.ts
 import {
   parsePhoneNumberFromString
-} from "libphonenumber-js";
+} from "libphonenumber-js/max";
 var PhoneValidator = class {
   /**
    * Validate any international phone number across all countries.
    * @param phoneNumber The raw phone number string (e.g. '+14155552671' or '4155552671')
-   * @param defaultCountry Optional ISO 3166-1 alpha-2 country code (e.g. 'US', 'GB', 'IN', 'CA')
+   * @param optionsOrDefaultCountry Optional ISO country code (e.g. 'GB', 'IN') or PhoneValidationOptions
    */
-  static validate(phoneNumber, defaultCountry) {
+  static validate(phoneNumber, optionsOrDefaultCountry) {
     if (!phoneNumber || typeof phoneNumber !== "string") {
       return { isValid: false, error: "Phone number must be a non-empty string" };
     }
+    const options = typeof optionsOrDefaultCountry === "string" ? { defaultCountry: optionsOrDefaultCountry } : optionsOrDefaultCountry || {};
+    const defaultCountry = options.defaultCountry;
     try {
       const parsed = parsePhoneNumberFromString(phoneNumber, defaultCountry);
       if (!parsed) {
@@ -107,12 +157,52 @@ var PhoneValidator = class {
           error: `Phone number is invalid for country ${parsed.country || "unknown"}`
         };
       }
+      const numberType = parsed.getType();
+      if (options.mobileOnly && numberType && numberType !== "MOBILE" && numberType !== "FIXED_LINE_OR_MOBILE") {
+        return {
+          isValid: false,
+          country: parsed.country,
+          countryCallingCode: parsed.countryCallingCode,
+          nationalNumber: parsed.nationalNumber,
+          numberType,
+          error: `Phone number is a ${numberType.toLowerCase().replace(/_/g, " ")} number, but only mobile numbers are allowed`
+        };
+      }
+      if (options.disallowDummy && parsed.nationalNumber) {
+        const nat = parsed.nationalNumber;
+        if (/^(\d)\1+$/.test(nat) || /(\d)\1{5,}/.test(nat)) {
+          return {
+            isValid: false,
+            country: parsed.country,
+            countryCallingCode: parsed.countryCallingCode,
+            nationalNumber: nat,
+            numberType,
+            error: "Phone number contains repeated dummy digits"
+          };
+        }
+        const sequences = ["0123456789", "9876543210"];
+        for (const seq of sequences) {
+          for (let i = 0; i <= seq.length - 6; i++) {
+            const sub = seq.substring(i, i + 6);
+            if (nat.includes(sub)) {
+              return {
+                isValid: false,
+                country: parsed.country,
+                countryCallingCode: parsed.countryCallingCode,
+                nationalNumber: nat,
+                numberType,
+                error: `Phone number contains predictable dummy sequence (${sub})`
+              };
+            }
+          }
+        }
+      }
       return {
         isValid: true,
         country: parsed.country,
         countryCallingCode: parsed.countryCallingCode,
         nationalNumber: parsed.nationalNumber,
-        numberType: parsed.getType(),
+        numberType,
         formats: {
           e164: parsed.format("E.164"),
           international: parsed.format("INTERNATIONAL"),
@@ -127,11 +217,11 @@ var PhoneValidator = class {
       };
     }
   }
-  static isValid(phoneNumber, defaultCountry) {
-    return this.validate(phoneNumber, defaultCountry).isValid;
+  static isValid(phoneNumber, optionsOrDefaultCountry) {
+    return this.validate(phoneNumber, optionsOrDefaultCountry).isValid;
   }
-  static formatE164(phoneNumber, defaultCountry) {
-    const res = this.validate(phoneNumber, defaultCountry);
+  static formatE164(phoneNumber, optionsOrDefaultCountry) {
+    const res = this.validate(phoneNumber, optionsOrDefaultCountry);
     return res.isValid && res.formats ? res.formats.e164 : null;
   }
 };
@@ -335,8 +425,8 @@ function validateRequest(schema) {
           }
         }
         if (rule.phone) {
-          const defaultCountry = typeof rule.phone === "object" ? rule.phone.defaultCountry : void 0;
-          const result = PhoneValidator.validate(String(val), defaultCountry);
+          const phoneOpts = typeof rule.phone === "object" ? rule.phone : void 0;
+          const result = PhoneValidator.validate(String(val), phoneOpts);
           if (!result.isValid) {
             errors[fieldKey] = errors[fieldKey] || [];
             errors[fieldKey].push(result.error || "Invalid phone number");

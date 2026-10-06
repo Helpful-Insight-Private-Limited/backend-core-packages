@@ -3,7 +3,13 @@ import {
   CountryCode,
   NumberFormat,
   NumberType
-} from 'libphonenumber-js';
+} from 'libphonenumber-js/max';
+
+export interface PhoneValidationOptions {
+  defaultCountry?: CountryCode;
+  mobileOnly?: boolean;
+  disallowDummy?: boolean;
+}
 
 export interface PhoneValidationResult {
   isValid: boolean;
@@ -24,15 +30,21 @@ export class PhoneValidator {
   /**
    * Validate any international phone number across all countries.
    * @param phoneNumber The raw phone number string (e.g. '+14155552671' or '4155552671')
-   * @param defaultCountry Optional ISO 3166-1 alpha-2 country code (e.g. 'US', 'GB', 'IN', 'CA')
+   * @param optionsOrDefaultCountry Optional ISO country code (e.g. 'GB', 'IN') or PhoneValidationOptions
    */
   static validate(
     phoneNumber: string,
-    defaultCountry?: CountryCode
+    optionsOrDefaultCountry?: CountryCode | PhoneValidationOptions
   ): PhoneValidationResult {
     if (!phoneNumber || typeof phoneNumber !== 'string') {
       return { isValid: false, error: 'Phone number must be a non-empty string' };
     }
+
+    const options: PhoneValidationOptions =
+      typeof optionsOrDefaultCountry === 'string'
+        ? { defaultCountry: optionsOrDefaultCountry }
+        : optionsOrDefaultCountry || {};
+    const defaultCountry = options.defaultCountry;
 
     try {
       const parsed = parsePhoneNumberFromString(phoneNumber, defaultCountry);
@@ -55,12 +67,57 @@ export class PhoneValidator {
         };
       }
 
+      const numberType = parsed.getType();
+
+      if (options.mobileOnly && numberType && numberType !== 'MOBILE' && numberType !== 'FIXED_LINE_OR_MOBILE') {
+        return {
+          isValid: false,
+          country: parsed.country,
+          countryCallingCode: parsed.countryCallingCode,
+          nationalNumber: parsed.nationalNumber,
+          numberType,
+          error: `Phone number is a ${numberType.toLowerCase().replace(/_/g, ' ')} number, but only mobile numbers are allowed`
+        };
+      }
+
+      if (options.disallowDummy && parsed.nationalNumber) {
+        const nat = parsed.nationalNumber;
+        // Repeated identical digits (e.g. 9999999999 or 5+ same digits in a row)
+        if (/^(\d)\1+$/.test(nat) || /(\d)\1{5,}/.test(nat)) {
+          return {
+            isValid: false,
+            country: parsed.country,
+            countryCallingCode: parsed.countryCallingCode,
+            nationalNumber: nat,
+            numberType,
+            error: 'Phone number contains repeated dummy digits'
+          };
+        }
+        // Predictable sequences (e.g. 12345678, 98765432)
+        const sequences = ['0123456789', '9876543210'];
+        for (const seq of sequences) {
+          for (let i = 0; i <= seq.length - 6; i++) {
+            const sub = seq.substring(i, i + 6);
+            if (nat.includes(sub)) {
+              return {
+                isValid: false,
+                country: parsed.country,
+                countryCallingCode: parsed.countryCallingCode,
+                nationalNumber: nat,
+                numberType,
+                error: `Phone number contains predictable dummy sequence (${sub})`
+              };
+            }
+          }
+        }
+      }
+
       return {
         isValid: true,
         country: parsed.country,
         countryCallingCode: parsed.countryCallingCode,
         nationalNumber: parsed.nationalNumber,
-        numberType: parsed.getType(),
+        numberType,
         formats: {
           e164: parsed.format('E.164'),
           international: parsed.format('INTERNATIONAL'),
@@ -76,12 +133,18 @@ export class PhoneValidator {
     }
   }
 
-  static isValid(phoneNumber: string, defaultCountry?: CountryCode): boolean {
-    return this.validate(phoneNumber, defaultCountry).isValid;
+  static isValid(
+    phoneNumber: string,
+    optionsOrDefaultCountry?: CountryCode | PhoneValidationOptions
+  ): boolean {
+    return this.validate(phoneNumber, optionsOrDefaultCountry).isValid;
   }
 
-  static formatE164(phoneNumber: string, defaultCountry?: CountryCode): string | null {
-    const res = this.validate(phoneNumber, defaultCountry);
+  static formatE164(
+    phoneNumber: string,
+    optionsOrDefaultCountry?: CountryCode | PhoneValidationOptions
+  ): string | null {
+    const res = this.validate(phoneNumber, optionsOrDefaultCountry);
     return res.isValid && res.formats ? res.formats.e164 : null;
   }
 }
