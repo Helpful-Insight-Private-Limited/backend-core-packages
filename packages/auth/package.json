@@ -1,6 +1,6 @@
 {
   "name": "@rohit-jain11/auth",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Enterprise Authentication System with JWT Access/Refresh tokens, Token Rotation, Argon2/Bcrypt, MFA/TOTP, and OAuth 2.0 helpers",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -18,11 +18,12 @@
     "README.md"
   ],
   "scripts": {
-    "build": "node api.js && tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "node api.js && tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "test": "vitest run"
   },
   "dependencies": {
+    "@rohit-jain11/validator": "workspace:*",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2"
   },

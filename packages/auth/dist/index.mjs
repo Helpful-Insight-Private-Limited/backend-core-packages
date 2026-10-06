@@ -609,6 +609,7 @@ function createAuthMiddleware(jwtService, defaultOptions = {}) {
 }
 
 // src/router.ts
+import { EmailValidator, PhoneValidator } from "@rohit-jain11/validator";
 function createAuthRouter(options) {
   const router = Router();
   const store = options.userStore || (options.prisma ? new PrismaAuthUserStore(options.prisma) : new MemoryAuthUserStore());
@@ -635,8 +636,18 @@ function createAuthRouter(options) {
   const handleSignup = async (req, res) => {
     try {
       const { email, password, name, phone, role } = req.body;
-      if (!email || typeof email !== "string" || !email.includes("@")) {
+      if (!email || typeof email !== "string") {
         return sendError(res, "INVALID_EMAIL", "A valid email address is required", 400);
+      }
+      const emailValidation = EmailValidator.validate(email);
+      if (!emailValidation.isValid) {
+        return sendError(res, "INVALID_EMAIL", emailValidation.error || "A valid email address is required", 400);
+      }
+      if (phone) {
+        const phoneValidation = PhoneValidator.validate(String(phone));
+        if (!phoneValidation.isValid) {
+          return sendError(res, "INVALID_PHONE", phoneValidation.error || "Invalid phone number format", 400);
+        }
       }
       if (!password || typeof password !== "string" || password.length < 8) {
         return sendError(
@@ -774,6 +785,10 @@ function createAuthRouter(options) {
       const { email } = req.body;
       if (!email || typeof email !== "string") {
         return sendError(res, "EMAIL_REQUIRED", "Email is required", 400);
+      }
+      const emailValidation = EmailValidator.validate(email);
+      if (!emailValidation.isValid) {
+        return sendError(res, "INVALID_EMAIL", emailValidation.error || "A valid email address is required", 400);
       }
       const user = await store.findByEmail(email);
       if (!user) {

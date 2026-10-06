@@ -128,6 +128,28 @@ describe('@core/auth', () => {
       expect(res.body.data.tokens.accessToken).toBeDefined();
     });
 
+    it('1b. POST /signup - should reject malformed emails like test@@example.com and rohit60!!@example.com', async () => {
+      const doubleAtRes = await request(app)
+        .post('/auth/signup')
+        .send({
+          email: 'test@@example.com',
+          password: 'Password123!'
+        });
+      expect(doubleAtRes.status).toBe(400);
+      expect(doubleAtRes.body.success).toBe(false);
+      expect(doubleAtRes.body.error.code).toBe('INVALID_EMAIL');
+
+      const doubleExclamationRes = await request(app)
+        .post('/auth/signup')
+        .send({
+          email: 'rohit60!!@example.com',
+          password: 'Password123!'
+        });
+      expect(doubleExclamationRes.status).toBe(400);
+      expect(doubleExclamationRes.body.success).toBe(false);
+      expect(doubleExclamationRes.body.error.code).toBe('INVALID_EMAIL');
+    });
+
     it('2. POST /login - should authenticate valid user', async () => {
       const res = await request(app)
         .post('/auth/login')

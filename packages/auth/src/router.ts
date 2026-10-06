@@ -5,6 +5,7 @@ import { TotpService } from './totp.js';
 import { ISessionStore } from './sessions.js';
 import { IAuthUserStore, PrismaAuthUserStore, MemoryAuthUserStore } from './user-store.js';
 import { createAuthMiddleware } from './express.js';
+import { EmailValidator, PhoneValidator } from '@rohit-jain11/validator';
 
 export interface SendMailHookOptions {
   to: string;
@@ -69,8 +70,20 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
     try {
       const { email, password, name, phone, role } = req.body;
 
-      if (!email || typeof email !== 'string' || !email.includes('@')) {
+      if (!email || typeof email !== 'string') {
         return sendError(res, 'INVALID_EMAIL', 'A valid email address is required', 400);
+      }
+
+      const emailValidation = EmailValidator.validate(email);
+      if (!emailValidation.isValid) {
+        return sendError(res, 'INVALID_EMAIL', emailValidation.error || 'A valid email address is required', 400);
+      }
+
+      if (phone) {
+        const phoneValidation = PhoneValidator.validate(String(phone));
+        if (!phoneValidation.isValid) {
+          return sendError(res, 'INVALID_PHONE', phoneValidation.error || 'Invalid phone number format', 400);
+        }
       }
 
       if (!password || typeof password !== 'string' || password.length < 8) {
@@ -234,6 +247,11 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
 
       if (!email || typeof email !== 'string') {
         return sendError(res, 'EMAIL_REQUIRED', 'Email is required', 400);
+      }
+
+      const emailValidation = EmailValidator.validate(email);
+      if (!emailValidation.isValid) {
+        return sendError(res, 'INVALID_EMAIL', emailValidation.error || 'A valid email address is required', 400);
       }
 
       const user = await store.findByEmail(email);
