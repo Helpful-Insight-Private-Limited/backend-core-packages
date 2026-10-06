@@ -236,6 +236,9 @@ function createHttpLoggerMiddleware(options = {}) {
   const loggerInstance = options.logger || defaultLogger;
   const audit = options.auditService;
   const headerName = options.headerName || "x-request-id";
+  const autoAudit = options.autoAudit ?? true;
+  const defaultExcludes = ["/health", "/docs", "/favicon.ico"];
+  const excludeAuditPaths = options.excludeAuditPaths ? [...defaultExcludes, ...options.excludeAuditPaths] : defaultExcludes;
   return (req, res, next) => {
     const startTime = process.hrtime();
     const incomingId = req.headers[headerName.toLowerCase()];
@@ -251,7 +254,7 @@ function createHttpLoggerMiddleware(options = {}) {
     req.logger = scopedLogger;
     if (audit) {
       req.audit = (event) => {
-        const actor = req.user ? { id: String(req.user.id), email: req.user.email } : event.actor;
+        const actor = req.user ? { id: String(req.user.id || req.user.sub), email: req.user.email } : event.actor;
         return audit.record({
           ...event,
           actor,
@@ -276,6 +279,32 @@ function createHttpLoggerMiddleware(options = {}) {
         scopedLogger.warn({ ...logData }, `HTTP ${req.method} ${req.originalUrl || req.url} ${res.statusCode} - ${durationMs}ms`);
       } else {
         scopedLogger.info({ ...logData }, `HTTP ${req.method} ${req.originalUrl || req.url} ${res.statusCode} - ${durationMs}ms`);
+      }
+      if (audit && autoAudit) {
+        const url = req.originalUrl || req.url;
+        const isExcluded = excludeAuditPaths.some((excludePath) => url.startsWith(excludePath));
+        if (!isExcluded) {
+          const user = req.user;
+          const actor = user ? { id: String(user.id || user.sub), email: user.email } : void 0;
+          audit.record({
+            actor,
+            action: `HTTP_${req.method.toUpperCase()}`,
+            resource: req.baseUrl || req.path || url.split("?")[0] || "HTTP",
+            targetId: req.id,
+            status: res.statusCode >= 400 ? "FAILURE" : "SUCCESS",
+            ipAddress: req.ip,
+            userAgent: req.get("user-agent"),
+            newValues: options.logBody && req.body && Object.keys(req.body).length > 0 ? maskSensitiveData(req.body) : void 0,
+            metadata: {
+              method: req.method,
+              url,
+              statusCode: res.statusCode,
+              durationMs
+            }
+          }).catch((err) => {
+            scopedLogger.warn({ err }, "Failed to record auto-audit log");
+          });
+        }
       }
     });
     next();

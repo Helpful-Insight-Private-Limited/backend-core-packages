@@ -1,6 +1,6 @@
 {
   "name": "@rohit-jain11/logger",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "High-performance Pino logger, request/response tracer, and compliance audit trail system for Express",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -13,7 +13,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "node api.js && tsup src/index.ts --format cjs,esm --dts --clean",

@@ -91,6 +91,16 @@ interface HttpLoggerMiddlewareOptions {
     auditService?: AuditService;
     headerName?: string;
     logBody?: boolean;
+    /**
+     * Automatically record an audit event for every incoming HTTP request when auditService is provided.
+     * Default: true
+     */
+    autoAudit?: boolean;
+    /**
+     * Paths that should be skipped from automatic audit logging (e.g. ['/health', '/docs']).
+     * Default: ['/health', '/docs', '/favicon.ico']
+     */
+    excludeAuditPaths?: string[];
 }
 declare function createHttpLoggerMiddleware(options?: HttpLoggerMiddlewareOptions): RequestHandler;
 

@@ -1,6 +1,6 @@
 {
   "name": "@rohit-jain11/email-templates",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Responsive, dynamic, and editable email templates engine with File, DB (Prisma), and Memory stores",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -13,7 +13,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "node api.js && tsup src/index.ts --format cjs,esm --dts --clean",
