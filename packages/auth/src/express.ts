@@ -49,6 +49,19 @@ export function createAuthMiddleware(
 
       try {
         const payload = jwtService.verifyAccessToken<AuthTokenPayload>(token);
+
+        // Reject non-access tokens (e.g. password_reset tokens)
+        if (payload.purpose && payload.purpose !== 'access') {
+          res.status(401).json({
+            success: false,
+            error: {
+              code: 'INVALID_TOKEN_PURPOSE',
+              message: 'Token cannot be used for session authentication'
+            }
+          });
+          return;
+        }
+
         req.user = payload;
         next();
       } catch (err: any) {

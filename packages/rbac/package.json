@@ -18,8 +18,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "node api.js && tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "node api.js && tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "test": "vitest run"
   },
   "dependencies": {},

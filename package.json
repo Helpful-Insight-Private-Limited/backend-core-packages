@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@12.6.0",
   "scripts": {
-    "build": "node api.js && turbo run build",
+    "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "clean": "turbo run clean",

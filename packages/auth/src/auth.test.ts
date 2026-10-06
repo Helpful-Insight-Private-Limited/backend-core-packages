@@ -217,5 +217,174 @@ describe('@core/auth', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
+
+    it('6. POST /signup - should prevent mass assignment privilege escalation (CWE-915)', async () => {
+      const res = await request(app)
+        .post('/auth/signup')
+        .send({
+          email: 'attacker@example.com',
+          password: 'Password123!',
+          role: 'admin' // Attempting privilege escalation
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      // Role must be the default viewer role, NEVER admin!
+      expect(res.body.data.user.roles).toEqual(['viewer']);
+      expect(res.body.data.user.roles).not.toContain('admin');
+    });
+
+    it('7. Protected route - should reject password reset token as access token', async () => {
+      const { createAuthMiddleware } = await import('./express.js');
+      const jwtLib = (await import('jsonwebtoken')).default;
+      const { authenticateJwt } = createAuthMiddleware(jwtService);
+
+      const protectedApp = express();
+      protectedApp.use(express.json());
+      protectedApp.get('/profile', authenticateJwt(), (req, res) => {
+        res.json({ success: true, user: req.user });
+      });
+
+      // 7a. Dedicated reset token (signed with resetSecret)
+      const resetToken = jwtService.generateResetToken({
+        sub: 'user_123',
+        email: 'user@example.com'
+      });
+
+      const res = await request(protectedApp)
+        .get('/profile')
+        .set('Authorization', `Bearer ${resetToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+
+      // 7b. Token signed with access secret but having purpose: 'password_reset'
+      const tokenWithResetPurpose = jwtLib.sign(
+        { sub: 'user_123', email: 'user@example.com', purpose: 'password_reset' },
+        'test-access-secret-32-chars-long-at-least!'
+      );
+      const res2 = await request(protectedApp)
+        .get('/profile')
+        .set('Authorization', `Bearer ${tokenWithResetPurpose}`);
+
+      expect(res2.status).toBe(401);
+      expect(res2.body.success).toBe(false);
+      expect(res2.body.error.code).toBe('INVALID_TOKEN_PURPOSE');
+    });
+
+    it('8. GET /auth/me - should return user profile with valid access token', async () => {
+      // First login alice
+      const loginRes = await request(app)
+        .post('/auth/login')
+        .send({
+          email: 'alice@example.com',
+          password: 'BrandNewSecurePassword456!'
+        });
+
+      const accessToken = loginRes.body.data.tokens.accessToken;
+      const meRes = await request(app)
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(meRes.status).toBe(200);
+      expect(meRes.body.success).toBe(true);
+      expect(meRes.body.data.email).toBe('alice@example.com');
+      expect(meRes.body.data.roles).toEqual(['viewer']);
+    });
+
+    it('9. POST /auth/refresh - should rotate refresh token and issue new pair', async () => {
+      const loginRes = await request(app)
+        .post('/auth/login')
+        .send({
+          email: 'alice@example.com',
+          password: 'BrandNewSecurePassword456!'
+        });
+
+      const oldRefreshToken = loginRes.body.data.tokens.refreshToken;
+
+      const refreshRes = await request(app)
+        .post('/auth/refresh')
+        .send({ refreshToken: oldRefreshToken });
+
+      expect(refreshRes.status).toBe(200);
+      expect(refreshRes.body.success).toBe(true);
+      expect(refreshRes.body.data.tokens.accessToken).toBeDefined();
+      expect(refreshRes.body.data.tokens.refreshToken).toBeDefined();
+
+      // Attempt to replay the old refresh token
+      const replayRes = await request(app)
+        .post('/auth/refresh')
+        .send({ refreshToken: oldRefreshToken });
+
+      expect(replayRes.status).toBe(403);
+      expect(replayRes.body.success).toBe(false);
+      expect(replayRes.body.error.code).toBe('INVALID_REFRESH_TOKEN');
+    });
+
+    it('10. POST /auth/logout - should revoke refresh token', async () => {
+      const loginRes = await request(app)
+        .post('/auth/login')
+        .send({
+          email: 'alice@example.com',
+          password: 'BrandNewSecurePassword456!'
+        });
+
+      const refreshToken = loginRes.body.data.tokens.refreshToken;
+
+      const logoutRes = await request(app)
+        .post('/auth/logout')
+        .send({ refreshToken });
+
+      expect(logoutRes.status).toBe(200);
+      expect(logoutRes.body.success).toBe(true);
+
+      // Attempting to refresh with the logged out token should fail
+      const refreshRes = await request(app)
+        .post('/auth/refresh')
+        .send({ refreshToken });
+
+      expect(refreshRes.status).toBe(403);
+    });
+
+    it('11. MFA Setup & Verify - should enable 2FA on valid TOTP code', async () => {
+      const loginRes = await request(app)
+        .post('/auth/login')
+        .send({
+          email: 'alice@example.com',
+          password: 'BrandNewSecurePassword456!'
+        });
+
+      const accessToken = loginRes.body.data.tokens.accessToken;
+
+      // 1. Setup MFA
+      const setupRes = await request(app)
+        .post('/auth/mfa/setup')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(setupRes.status).toBe(200);
+      expect(setupRes.body.success).toBe(true);
+      expect(setupRes.body.data.secret).toBeDefined();
+      expect(setupRes.body.data.backupCodes).toHaveLength(8);
+
+      const secret = setupRes.body.data.secret;
+      const validCode = TotpService.generateToken(secret);
+
+      // 2. Verify MFA with valid code
+      const verifyRes = await request(app)
+        .post('/auth/mfa/verify')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ token: validCode });
+
+      expect(verifyRes.status).toBe(200);
+      expect(verifyRes.body.success).toBe(true);
+
+      // 3. Check /me reflects MFA enabled
+      const meRes = await request(app)
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(meRes.body.data.isMfaEnabled).toBe(true);
+    });
   });
 });
+

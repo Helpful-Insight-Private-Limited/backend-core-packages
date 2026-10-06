@@ -13,8 +13,10 @@ export interface AuthTokenPayload {
 export interface JwtServiceOptions {
   accessSecret: string;
   refreshSecret?: string;
+  resetSecret?: string;
   accessExpiresIn?: string | number; // e.g. '15m'
   refreshExpiresIn?: string | number; // e.g. '7d'
+  resetExpiresIn?: string | number;   // e.g. '15m'
   issuer?: string;
   audience?: string;
 }
@@ -22,27 +24,32 @@ export interface JwtServiceOptions {
 export class JwtService {
   private accessSecret: string;
   private refreshSecret: string;
+  private resetSecret: string;
   private accessExpiresIn: string | number;
   private refreshExpiresIn: string | number;
+  private resetExpiresIn: string | number;
   private issuer?: string;
   private audience?: string;
 
   constructor(options: JwtServiceOptions) {
     this.accessSecret = options.accessSecret;
     this.refreshSecret = options.refreshSecret || options.accessSecret;
+    this.resetSecret = options.resetSecret || `${options.accessSecret}_reset_token_secret`;
     this.accessExpiresIn = options.accessExpiresIn || '15m';
     this.refreshExpiresIn = options.refreshExpiresIn || '7d';
+    this.resetExpiresIn = options.resetExpiresIn || '15m';
     this.issuer = options.issuer;
     this.audience = options.audience;
   }
 
   generateAccessToken(payload: AuthTokenPayload, customExpiresIn?: string | number): string {
     const options: SignOptions = {
-      expiresIn: (customExpiresIn || this.accessExpiresIn) as any
+      expiresIn: (customExpiresIn || this.accessExpiresIn) as any,
+      jwtid: Math.random().toString(36).substring(2) + Date.now().toString(36)
     };
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
-    return jwt.sign(payload, this.accessSecret, options);
+    return jwt.sign({ purpose: 'access', ...payload }, this.accessSecret, options);
   }
 
   generateRefreshToken(
@@ -50,7 +57,8 @@ export class JwtService {
     customExpiresIn?: string | number
   ): string {
     const options: SignOptions = {
-      expiresIn: (customExpiresIn || this.refreshExpiresIn) as any
+      expiresIn: (customExpiresIn || this.refreshExpiresIn) as any,
+      jwtid: Math.random().toString(36).substring(2) + Date.now().toString(36)
     };
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
@@ -87,5 +95,26 @@ export class JwtService {
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
     return jwt.verify(token, this.refreshSecret, options) as T;
+  }
+
+  generateResetToken(payload: AuthTokenPayload, customExpiresIn?: string | number): string {
+    const options: SignOptions = {
+      expiresIn: (customExpiresIn || this.resetExpiresIn) as any,
+      jwtid: Math.random().toString(36).substring(2) + Date.now().toString(36)
+    };
+    if (this.issuer) options.issuer = this.issuer;
+    if (this.audience) options.audience = this.audience;
+    return jwt.sign({ ...payload, purpose: 'password_reset' }, this.resetSecret, options);
+  }
+
+  verifyResetToken<T = AuthTokenPayload>(token: string): T {
+    const options: VerifyOptions = {};
+    if (this.issuer) options.issuer = this.issuer;
+    if (this.audience) options.audience = this.audience;
+    const payload = jwt.verify(token, this.resetSecret, options) as any;
+    if (payload.purpose !== 'password_reset') {
+      throw new Error('Token is not valid for password reset');
+    }
+    return payload as T;
   }
 }

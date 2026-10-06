@@ -68,7 +68,7 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
   // -------------------------------------------------------------
   const handleSignup = async (req: Request, res: Response) => {
     try {
-      const { email, password, name, phone, role } = req.body;
+      const { email, password, name, phone } = req.body;
 
       if (!email || typeof email !== 'string') {
         return sendError(res, 'INVALID_EMAIL', 'A valid email address is required', 400);
@@ -111,7 +111,7 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         passwordHash,
         name,
         phone,
-        role: role || defaultRole
+        role: defaultRole
       });
 
       const roles = user.roles || [defaultRole];
@@ -264,12 +264,11 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         });
       }
 
-      // Generate signed password reset JWT token
-      const resetToken = jwt.generateAccessToken(
+      // Generate signed password reset JWT token with dedicated secret and purpose
+      const resetToken = jwt.generateResetToken(
         {
           sub: user.id,
-          email: user.email,
-          purpose: 'password_reset'
+          email: user.email
         },
         resetTokenExpires
       );
@@ -328,21 +327,12 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
 
       let payload: any;
       try {
-        payload = jwt.verifyAccessToken(token);
+        payload = jwt.verifyResetToken(token);
       } catch (tokenErr: any) {
         return sendError(
           res,
           'INVALID_RESET_TOKEN',
           'Password reset link is invalid or has expired. Please request a new one.',
-          400
-        );
-      }
-
-      if (payload.purpose !== 'password_reset') {
-        return sendError(
-          res,
-          'INVALID_RESET_TOKEN',
-          'Token is not valid for password reset',
           400
         );
       }
@@ -461,7 +451,7 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
   // -------------------------------------------------------------
   // 8. MFA SETUP & VERIFY
   // -------------------------------------------------------------
-  router.post('/mfa/setup', authenticateJwt(), async (req: Request, res: Response) => {
+  const handleMfaSetup = async (req: Request, res: Response) => {
     const userId = req.user!.sub;
     const secret = TotpService.generateSecret();
     const uri = TotpService.getOtpAuthUri({
@@ -482,9 +472,12 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
       backupCodes,
       instructions: 'Add secret to your authenticator app, then call /mfa/verify'
     });
-  });
+  };
 
-  router.post('/mfa/verify', authenticateJwt(), async (req: Request, res: Response) => {
+  router.post('/mfa/setup', authenticateJwt(), handleMfaSetup);
+  router.post('/2fa/setup', authenticateJwt(), handleMfaSetup);
+
+  const handleMfaVerify = async (req: Request, res: Response) => {
     const userId = req.user!.sub;
     const { token } = req.body;
 
@@ -509,7 +502,10 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
 
     await store.updateMfa(userId, { isMfaEnabled: true });
     sendSuccess(res, { message: 'Two-Factor Authentication is now enabled!' });
-  });
+  };
+
+  router.post('/mfa/verify', authenticateJwt(), handleMfaVerify);
+  router.post('/2fa/verify', authenticateJwt(), handleMfaVerify);
 
   return router;
 }

@@ -16,29 +16,35 @@ import jwt from "jsonwebtoken";
 var JwtService = class {
   accessSecret;
   refreshSecret;
+  resetSecret;
   accessExpiresIn;
   refreshExpiresIn;
+  resetExpiresIn;
   issuer;
   audience;
   constructor(options) {
     this.accessSecret = options.accessSecret;
     this.refreshSecret = options.refreshSecret || options.accessSecret;
+    this.resetSecret = options.resetSecret || `${options.accessSecret}_reset_token_secret`;
     this.accessExpiresIn = options.accessExpiresIn || "15m";
     this.refreshExpiresIn = options.refreshExpiresIn || "7d";
+    this.resetExpiresIn = options.resetExpiresIn || "15m";
     this.issuer = options.issuer;
     this.audience = options.audience;
   }
   generateAccessToken(payload, customExpiresIn) {
     const options = {
-      expiresIn: customExpiresIn || this.accessExpiresIn
+      expiresIn: customExpiresIn || this.accessExpiresIn,
+      jwtid: Math.random().toString(36).substring(2) + Date.now().toString(36)
     };
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
-    return jwt.sign(payload, this.accessSecret, options);
+    return jwt.sign({ purpose: "access", ...payload }, this.accessSecret, options);
   }
   generateRefreshToken(payload, customExpiresIn) {
     const options = {
-      expiresIn: customExpiresIn || this.refreshExpiresIn
+      expiresIn: customExpiresIn || this.refreshExpiresIn,
+      jwtid: Math.random().toString(36).substring(2) + Date.now().toString(36)
     };
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
@@ -68,6 +74,25 @@ var JwtService = class {
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
     return jwt.verify(token, this.refreshSecret, options);
+  }
+  generateResetToken(payload, customExpiresIn) {
+    const options = {
+      expiresIn: customExpiresIn || this.resetExpiresIn,
+      jwtid: Math.random().toString(36).substring(2) + Date.now().toString(36)
+    };
+    if (this.issuer) options.issuer = this.issuer;
+    if (this.audience) options.audience = this.audience;
+    return jwt.sign({ ...payload, purpose: "password_reset" }, this.resetSecret, options);
+  }
+  verifyResetToken(token) {
+    const options = {};
+    if (this.issuer) options.issuer = this.issuer;
+    if (this.audience) options.audience = this.audience;
+    const payload = jwt.verify(token, this.resetSecret, options);
+    if (payload.purpose !== "password_reset") {
+      throw new Error("Token is not valid for password reset");
+    }
+    return payload;
   }
 };
 
@@ -564,6 +589,16 @@ function createAuthMiddleware(jwtService, defaultOptions = {}) {
       }
       try {
         const payload = jwtService.verifyAccessToken(token);
+        if (payload.purpose && payload.purpose !== "access") {
+          res.status(401).json({
+            success: false,
+            error: {
+              code: "INVALID_TOKEN_PURPOSE",
+              message: "Token cannot be used for session authentication"
+            }
+          });
+          return;
+        }
         req.user = payload;
         next();
       } catch (err) {
@@ -635,7 +670,7 @@ function createAuthRouter(options) {
   };
   const handleSignup = async (req, res) => {
     try {
-      const { email, password, name, phone, role } = req.body;
+      const { email, password, name, phone } = req.body;
       if (!email || typeof email !== "string") {
         return sendError(res, "INVALID_EMAIL", "A valid email address is required", 400);
       }
@@ -672,7 +707,7 @@ function createAuthRouter(options) {
         passwordHash,
         name,
         phone,
-        role: role || defaultRole
+        role: defaultRole
       });
       const roles = user.roles || [defaultRole];
       const tokens = jwt2.generateTokenPair({
@@ -796,11 +831,10 @@ function createAuthRouter(options) {
           message: "If an account associated with this email exists, a password reset link has been sent."
         });
       }
-      const resetToken = jwt2.generateAccessToken(
+      const resetToken = jwt2.generateResetToken(
         {
           sub: user.id,
-          email: user.email,
-          purpose: "password_reset"
+          email: user.email
         },
         resetTokenExpires
       );
@@ -843,20 +877,12 @@ function createAuthRouter(options) {
       }
       let payload;
       try {
-        payload = jwt2.verifyAccessToken(token);
+        payload = jwt2.verifyResetToken(token);
       } catch (tokenErr) {
         return sendError(
           res,
           "INVALID_RESET_TOKEN",
           "Password reset link is invalid or has expired. Please request a new one.",
-          400
-        );
-      }
-      if (payload.purpose !== "password_reset") {
-        return sendError(
-          res,
-          "INVALID_RESET_TOKEN",
-          "Token is not valid for password reset",
           400
         );
       }
@@ -945,7 +971,7 @@ function createAuthRouter(options) {
       isMfaEnabled: user.isMfaEnabled
     });
   });
-  router.post("/mfa/setup", authenticateJwt(), async (req, res) => {
+  const handleMfaSetup = async (req, res) => {
     const userId = req.user.sub;
     const secret = TotpService.generateSecret();
     const uri = TotpService.getOtpAuthUri({
@@ -964,8 +990,10 @@ function createAuthRouter(options) {
       backupCodes,
       instructions: "Add secret to your authenticator app, then call /mfa/verify"
     });
-  });
-  router.post("/mfa/verify", authenticateJwt(), async (req, res) => {
+  };
+  router.post("/mfa/setup", authenticateJwt(), handleMfaSetup);
+  router.post("/2fa/setup", authenticateJwt(), handleMfaSetup);
+  const handleMfaVerify = async (req, res) => {
     const userId = req.user.sub;
     const { token } = req.body;
     if (!token || typeof token !== "string") {
@@ -986,7 +1014,9 @@ function createAuthRouter(options) {
     }
     await store.updateMfa(userId, { isMfaEnabled: true });
     sendSuccess(res, { message: "Two-Factor Authentication is now enabled!" });
-  });
+  };
+  router.post("/mfa/verify", authenticateJwt(), handleMfaVerify);
+  router.post("/2fa/verify", authenticateJwt(), handleMfaVerify);
   return router;
 }
 

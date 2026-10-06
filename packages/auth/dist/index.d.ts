@@ -17,16 +17,20 @@ interface AuthTokenPayload {
 interface JwtServiceOptions {
     accessSecret: string;
     refreshSecret?: string;
+    resetSecret?: string;
     accessExpiresIn?: string | number;
     refreshExpiresIn?: string | number;
+    resetExpiresIn?: string | number;
     issuer?: string;
     audience?: string;
 }
 declare class JwtService {
     private accessSecret;
     private refreshSecret;
+    private resetSecret;
     private accessExpiresIn;
     private refreshExpiresIn;
+    private resetExpiresIn;
     private issuer?;
     private audience?;
     constructor(options: JwtServiceOptions);
@@ -39,6 +43,8 @@ declare class JwtService {
     };
     verifyAccessToken<T = AuthTokenPayload>(token: string): T;
     verifyRefreshToken<T = AuthTokenPayload>(token: string): T;
+    generateResetToken(payload: AuthTokenPayload, customExpiresIn?: string | number): string;
+    verifyResetToken<T = AuthTokenPayload>(token: string): T;
 }
 
 declare class TotpService {
