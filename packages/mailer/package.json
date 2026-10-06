@@ -1,6 +1,6 @@
 {
   "name": "@rohit-jain11/mailer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Unified enterprise mail service with SMTP, AWS SES, SendGrid, Mailgun, and Memory adapters",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
