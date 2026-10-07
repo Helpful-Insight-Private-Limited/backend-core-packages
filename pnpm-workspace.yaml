@@ -7,3 +7,5 @@ allowBuilds:
   '@scarf/scarf': true
   esbuild: true
   prisma: true
+minimumReleaseAgeExclude:
+  - '@helpful-insight/validator@1.0.3'
