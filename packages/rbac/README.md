@@ -1,6 +1,6 @@
-# @rohit-jain11/rbac
+# @helpful-insight/rbac
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/rbac.svg)](https://www.npmjs.com/package/@rohit-jain11/rbac)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/rbac.svg)](https://www.npmjs.com/package/@helpful-insight/rbac)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -32,13 +32,13 @@ Enterprise Role-Based Access Control (RBAC) and Attribute-Based Access Control (
 
 ```bash
 # npm
-npm install @rohit-jain11/rbac
+npm install @helpful-insight/rbac
 
 # pnpm
-pnpm add @rohit-jain11/rbac
+pnpm add @helpful-insight/rbac
 
 # yarn
-yarn add @rohit-jain11/rbac
+yarn add @helpful-insight/rbac
 ```
 
 ---
@@ -46,7 +46,7 @@ yarn add @rohit-jain11/rbac
 ## 🚀 Quick Start
 
 ```typescript
-import { RbacEngine } from '@rohit-jain11/rbac';
+import { RbacEngine } from '@helpful-insight/rbac';
 
 // 1. Initialize RBAC with role hierarchy
 const rbac = new RbacEngine([
@@ -105,7 +105,7 @@ Protect your Express endpoints cleanly with `RbacGuard`:
 
 ```typescript
 import express from 'express';
-import { RbacEngine, RbacGuard } from '@rohit-jain11/rbac';
+import { RbacEngine, RbacGuard } from '@helpful-insight/rbac';
 
 const app = express();
 app.use(express.json());

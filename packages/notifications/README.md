@@ -1,6 +1,6 @@
-# @rohit-jain11/notifications
+# @helpful-insight/notifications
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/notifications.svg)](https://www.npmjs.com/package/@rohit-jain11/notifications)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/notifications.svg)](https://www.npmjs.com/package/@helpful-insight/notifications)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -12,7 +12,7 @@ Enterprise multi-channel notification engine for **Node.js, Express, and Prisma*
 
 * 📡 **Multi-Channel Dispatching**:
   * `in_app`: Stores notifications in DB and pushes instantly to active browser sessions via SSE.
-  * `email`: Routes through transactional email providers (e.g. `@rohit-jain11/mailer`).
+  * `email`: Routes through transactional email providers (e.g. `@helpful-insight/mailer`).
   * `webhook`: POSTs JSON payloads with cryptographic **HMAC-SHA256 signature** validation headers.
 * ⚡ **Live Real-time Server-Sent Events (SSE)**:
   * Zero-dependency real-time push to frontend clients without needing WebSocket servers.
@@ -31,13 +31,13 @@ Enterprise multi-channel notification engine for **Node.js, Express, and Prisma*
 
 ```bash
 # npm
-npm install @rohit-jain11/notifications
+npm install @helpful-insight/notifications
 
 # pnpm
-pnpm add @rohit-jain11/notifications
+pnpm add @helpful-insight/notifications
 
 # yarn
-yarn add @rohit-jain11/notifications
+yarn add @helpful-insight/notifications
 ```
 
 ---
@@ -45,7 +45,7 @@ yarn add @rohit-jain11/notifications
 ## 🚀 Quick Start
 
 ```typescript
-import { NotificationService } from '@rohit-jain11/notifications';
+import { NotificationService } from '@helpful-insight/notifications';
 
 const notifications = new NotificationService({
   defaultChannels: ['in_app']
@@ -72,7 +72,7 @@ Mount the pre-built notification router in Express:
 
 ```typescript
 import express from 'express';
-import { NotificationService, createNotificationRouter } from '@rohit-jain11/notifications';
+import { NotificationService, createNotificationRouter } from '@helpful-insight/notifications';
 
 const app = express();
 app.use(express.json());

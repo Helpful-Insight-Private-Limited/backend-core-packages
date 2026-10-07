@@ -1,6 +1,6 @@
-# @rohit-jain11/validator
+# @helpful-insight/validator
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/validator.svg)](https://www.npmjs.com/package/@rohit-jain11/validator)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/validator.svg)](https://www.npmjs.com/package/@helpful-insight/validator)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -38,13 +38,13 @@ Enterprise-grade, zero-compromise input validation package for **Node.js, Expres
 
 ```bash
 # npm
-npm install @rohit-jain11/validator
+npm install @helpful-insight/validator
 
 # pnpm
-pnpm add @rohit-jain11/validator
+pnpm add @helpful-insight/validator
 
 # yarn
-yarn add @rohit-jain11/validator
+yarn add @helpful-insight/validator
 ```
 
 ---
@@ -52,7 +52,7 @@ yarn add @rohit-jain11/validator
 ## 🚀 Quick Start
 
 ```typescript
-import { EmailValidator, PhoneValidator, PasswordValidator } from '@rohit-jain11/validator';
+import { EmailValidator, PhoneValidator, PasswordValidator } from '@helpful-insight/validator';
 
 // 1. Email
 const emailRes = EmailValidator.validate('alex@gmai.com');
@@ -80,7 +80,7 @@ console.log(passRes.suggestions); // ["Make your password at least 8 characters 
 Validates an email address against syntax rules, disposable provider blacklists, and provider-specific policies.
 
 ```typescript
-import { EmailValidator } from '@rohit-jain11/validator';
+import { EmailValidator } from '@helpful-insight/validator';
 
 const result = EmailValidator.validate('user@example.com', {
   allowDisposable: false,           // Default: false (blocks burner emails)
@@ -123,7 +123,7 @@ EmailValidator.validate('user@gmai.com');
 Parses and validates any international phone number using Google's full telecom numbering plans.
 
 ```typescript
-import { PhoneValidator } from '@rohit-jain11/validator';
+import { PhoneValidator } from '@helpful-insight/validator';
 
 // With Country Code fallback
 const result = PhoneValidator.validate('9876543210', 'IN');
@@ -172,7 +172,7 @@ PhoneValidator.formatE164('4155552671', 'US'); // "+14155552671"
 Tests password strength against security policies and common dictionary attacks.
 
 ```typescript
-import { PasswordValidator } from '@rohit-jain11/validator';
+import { PasswordValidator } from '@helpful-insight/validator';
 
 const result = PasswordValidator.validate('P@ssw0rd!2026', {
   minLength: 8,              // Default: 8
@@ -212,7 +212,7 @@ Integrate declarative validation directly into Express routes:
 
 ```typescript
 import express from 'express';
-import { validateRequest } from '@rohit-jain11/validator';
+import { validateRequest } from '@helpful-insight/validator';
 
 const app = express();
 app.use(express.json());

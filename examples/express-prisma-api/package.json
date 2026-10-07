@@ -18,14 +18,14 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "swagger-ui-express": "^5.0.1",
-    "@rohit-jain11/auth": "workspace:*",
-    "@rohit-jain11/email-templates": "workspace:*",
-    "@rohit-jain11/i18n": "workspace:*",
-    "@rohit-jain11/logger": "workspace:*",
-    "@rohit-jain11/mailer": "workspace:*",
-    "@rohit-jain11/notifications": "workspace:*",
-    "@rohit-jain11/rbac": "workspace:*",
-    "@rohit-jain11/validator": "workspace:*"
+    "@helpful-insight/auth": "workspace:*",
+    "@helpful-insight/email-templates": "workspace:*",
+    "@helpful-insight/i18n": "workspace:*",
+    "@helpful-insight/logger": "workspace:*",
+    "@helpful-insight/mailer": "workspace:*",
+    "@helpful-insight/notifications": "workspace:*",
+    "@helpful-insight/rbac": "workspace:*",
+    "@helpful-insight/validator": "workspace:*"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

@@ -1,5 +1,5 @@
 {
-  "name": "@rohit-jain11/mailer",
+  "name": "@helpful-insight/mailer",
   "version": "1.0.2",
   "description": "Unified enterprise mail service with SMTP, AWS SES, SendGrid, Mailgun, and Memory adapters",
   "main": "./dist/index.js",
@@ -37,7 +37,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "url": "https://github.com/Helpful-Insight-Private-Limited/backend-core-packages.git",
     "directory": "packages/mailer"
   }
 }

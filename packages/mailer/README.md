@@ -1,6 +1,6 @@
-# @rohit-jain11/mailer
+# @helpful-insight/mailer
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/mailer.svg)](https://www.npmjs.com/package/@rohit-jain11/mailer)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/mailer.svg)](https://www.npmjs.com/package/@helpful-insight/mailer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -31,13 +31,13 @@ Unified, resilient enterprise email dispatching service for **Node.js, Express, 
 
 ```bash
 # npm
-npm install @rohit-jain11/mailer
+npm install @helpful-insight/mailer
 
 # pnpm
-pnpm add @rohit-jain11/mailer
+pnpm add @helpful-insight/mailer
 
 # yarn
-yarn add @rohit-jain11/mailer
+yarn add @helpful-insight/mailer
 ```
 
 ---
@@ -46,7 +46,7 @@ yarn add @rohit-jain11/mailer
 
 ### 1. Development Mode (In-Memory)
 ```typescript
-import { MailService, DevMemoryMailProvider } from '@rohit-jain11/mailer';
+import { MailService, DevMemoryMailProvider } from '@helpful-insight/mailer';
 
 const memoryProvider = new DevMemoryMailProvider();
 const mailer = new MailService({
@@ -67,7 +67,7 @@ console.log(memoryProvider.getSentEmails());
 
 ### 2. Production SMTP (Nodemailer / Postmark / Gmail)
 ```typescript
-import { MailService, SmtpMailProvider } from '@rohit-jain11/mailer';
+import { MailService, SmtpMailProvider } from '@helpful-insight/mailer';
 
 const smtpProvider = new SmtpMailProvider({
   host: process.env.SMTP_HOST || 'smtp.sendgrid.net',
@@ -104,7 +104,7 @@ import {
   MailService,
   SendGridMailProvider,
   SmtpMailProvider
-} from '@rohit-jain11/mailer';
+} from '@helpful-insight/mailer';
 
 const primaryProvider = new SendGridMailProvider({
   apiKey: process.env.SENDGRID_API_KEY!

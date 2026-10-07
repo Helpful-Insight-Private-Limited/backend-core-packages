@@ -1,6 +1,6 @@
-# @rohit-jain11/email-templates
+# @helpful-insight/email-templates
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/email-templates.svg)](https://www.npmjs.com/package/@rohit-jain11/email-templates)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/email-templates.svg)](https://www.npmjs.com/package/@helpful-insight/email-templates)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -31,13 +31,13 @@ Dynamic, responsive, and database-editable email template engine for **Node.js, 
 
 ```bash
 # npm
-npm install @rohit-jain11/email-templates
+npm install @helpful-insight/email-templates
 
 # pnpm
-pnpm add @rohit-jain11/email-templates
+pnpm add @helpful-insight/email-templates
 
 # yarn
-yarn add @rohit-jain11/email-templates
+yarn add @helpful-insight/email-templates
 ```
 
 ---
@@ -45,7 +45,7 @@ yarn add @rohit-jain11/email-templates
 ## 🚀 Quick Start
 
 ```typescript
-import { EmailTemplateEngine } from '@rohit-jain11/email-templates';
+import { EmailTemplateEngine } from '@helpful-insight/email-templates';
 
 const engine = new EmailTemplateEngine();
 
@@ -97,7 +97,7 @@ Mount template management APIs and preview emails directly in your browser:
 
 ```typescript
 import express from 'express';
-import { EmailTemplateEngine, createTemplateRouter } from '@rohit-jain11/email-templates';
+import { EmailTemplateEngine, createTemplateRouter } from '@helpful-insight/email-templates';
 
 const app = express();
 app.use(express.json());
@@ -127,7 +127,7 @@ app.listen(3000, () => {
 To allow template editing from an admin panel without redeploying code:
 
 ```typescript
-import { EmailTemplateEngine, PrismaTemplateStore } from '@rohit-jain11/email-templates';
+import { EmailTemplateEngine, PrismaTemplateStore } from '@helpful-insight/email-templates';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

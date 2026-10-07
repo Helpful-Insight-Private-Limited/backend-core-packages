@@ -1,5 +1,5 @@
 {
-  "name": "@rohit-jain11/rbac",
+  "name": "@helpful-insight/rbac",
   "version": "1.0.2",
   "description": "Enterprise Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC) with wildcard permissions and Express guards",
   "main": "./dist/index.js",
@@ -45,7 +45,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "url": "https://github.com/Helpful-Insight-Private-Limited/backend-core-packages.git",
     "directory": "packages/rbac"
   }
 }

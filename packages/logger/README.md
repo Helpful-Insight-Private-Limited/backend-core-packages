@@ -1,6 +1,6 @@
-# @rohit-jain11/logger
+# @helpful-insight/logger
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/logger.svg)](https://www.npmjs.com/package/@rohit-jain11/logger)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/logger.svg)](https://www.npmjs.com/package/@helpful-insight/logger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -32,13 +32,13 @@ High-performance structured logger, request correlation tracer, and SOC2/HIPAA c
 
 ```bash
 # npm
-npm install @rohit-jain11/logger
+npm install @helpful-insight/logger
 
 # pnpm
-pnpm add @rohit-jain11/logger
+pnpm add @helpful-insight/logger
 
 # yarn
-yarn add @rohit-jain11/logger
+yarn add @helpful-insight/logger
 ```
 
 ---
@@ -47,7 +47,7 @@ yarn add @rohit-jain11/logger
 
 ### 1. Basic Structured Logging
 ```typescript
-import { logger } from '@rohit-jain11/logger';
+import { logger } from '@helpful-insight/logger';
 
 logger.info({ userId: 'u_123' }, 'User logged in successfully');
 logger.warn('Rate limit approaching threshold');
@@ -56,7 +56,7 @@ logger.error(new Error('Database connection failed'), 'Unhandled error');
 
 ### 2. Masking Sensitive Payloads
 ```typescript
-import { maskSensitiveData } from '@rohit-jain11/logger';
+import { maskSensitiveData } from '@helpful-insight/logger';
 
 const clean = maskSensitiveData({
   username: 'john_doe',
@@ -76,7 +76,7 @@ console.log(clean);
 
 ### 3. Compliance Audit Trail
 ```typescript
-import { AuditService, MemoryAuditRepository } from '@rohit-jain11/logger';
+import { AuditService, MemoryAuditRepository } from '@helpful-insight/logger';
 
 const repo = new MemoryAuditRepository(); // or new PrismaAuditRepository(prisma)
 const auditService = new AuditService(repo);
@@ -102,7 +102,7 @@ const logs = await auditService.getRecent(10);
 
 ```typescript
 import express from 'express';
-import { createHttpLoggerMiddleware, logger, AuditService, MemoryAuditRepository } from '@rohit-jain11/logger';
+import { createHttpLoggerMiddleware, logger, AuditService, MemoryAuditRepository } from '@helpful-insight/logger';
 
 const app = express();
 app.use(express.json());

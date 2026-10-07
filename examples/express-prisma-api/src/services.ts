@@ -1,17 +1,17 @@
 import { prisma } from './prisma.js';
-import { AppLogger, AuditService, PrismaAuditRepository } from '@rohit-jain11/logger';
-import { I18nService } from '@rohit-jain11/i18n';
-import { MailService, DevMemoryMailProvider, SmtpMailProvider } from '@rohit-jain11/mailer';
-import { EmailTemplateEngine, PrismaTemplateStore } from '@rohit-jain11/email-templates';
-import { JwtService, PrismaSessionStore, createAuthMiddleware } from '@rohit-jain11/auth';
-import { RbacEngine, PrismaRbacAdapter, RbacGuard } from '@rohit-jain11/rbac';
+import { AppLogger, AuditService, PrismaAuditRepository } from '@helpful-insight/logger';
+import { I18nService } from '@helpful-insight/i18n';
+import { MailService, DevMemoryMailProvider, SmtpMailProvider } from '@helpful-insight/mailer';
+import { EmailTemplateEngine, PrismaTemplateStore } from '@helpful-insight/email-templates';
+import { JwtService, PrismaSessionStore, createAuthMiddleware } from '@helpful-insight/auth';
+import { RbacEngine, PrismaRbacAdapter, RbacGuard } from '@helpful-insight/rbac';
 import {
   NotificationService,
   InAppChannelHandler,
   PrismaInAppStore,
   EmailNotificationHandler,
   WebhookChannelHandler
-} from '@rohit-jain11/notifications';
+} from '@helpful-insight/notifications';
 
 // 1. Logger & Audit Trail
 export const logger = new AppLogger({ name: 'enterprise-api' });

@@ -1,5 +1,5 @@
 {
-  "name": "@rohit-jain11/validator",
+  "name": "@helpful-insight/validator",
   "version": "1.0.2",
   "description": "Enterprise-grade form field validator for Email, All-Country Phone Numbers, and Strong Passwords with suggestions",
   "main": "./dist/index.js",
@@ -46,7 +46,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "url": "https://github.com/Helpful-Insight-Private-Limited/backend-core-packages.git",
     "directory": "packages/validator"
   }
 }

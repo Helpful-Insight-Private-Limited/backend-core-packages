@@ -1,5 +1,5 @@
 {
-  "name": "@rohit-jain11/auth",
+  "name": "@helpful-insight/auth",
   "version": "1.0.5",
   "description": "Enterprise Authentication System with JWT Access/Refresh tokens, Token Rotation, Argon2/Bcrypt, MFA/TOTP, and OAuth 2.0 helpers",
   "main": "./dist/index.js",
@@ -23,7 +23,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@rohit-jain11/validator": "workspace:*",
+    "@helpful-insight/validator": "workspace:*",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2"
   },
@@ -53,7 +53,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rohit-Jain11/backend-core-packages.git",
+    "url": "https://github.com/Helpful-Insight-Private-Limited/backend-core-packages.git",
     "directory": "packages/auth"
   }
 }

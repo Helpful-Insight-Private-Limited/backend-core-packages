@@ -190,28 +190,28 @@ importers:
       '@prisma/client':
         specifier: ^6.4.1
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
-      '@rohit-jain11/auth':
+      '@helpful-insight/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@rohit-jain11/email-templates':
+      '@helpful-insight/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
-      '@rohit-jain11/i18n':
+      '@helpful-insight/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@rohit-jain11/logger':
+      '@helpful-insight/logger':
         specifier: workspace:*
         version: link:../../packages/logger
-      '@rohit-jain11/mailer':
+      '@helpful-insight/mailer':
         specifier: workspace:*
         version: link:../../packages/mailer
-      '@rohit-jain11/notifications':
+      '@helpful-insight/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
-      '@rohit-jain11/rbac':
+      '@helpful-insight/rbac':
         specifier: workspace:*
         version: link:../../packages/rbac
-      '@rohit-jain11/validator':
+      '@helpful-insight/validator':
         specifier: workspace:*
         version: link:../../packages/validator
       cors:
@@ -260,7 +260,7 @@ importers:
 
   packages/auth:
     dependencies:
-      '@rohit-jain11/validator':
+      '@helpful-insight/validator':
         specifier: workspace:*
         version: link:../validator
       bcryptjs:

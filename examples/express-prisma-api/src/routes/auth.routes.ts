@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { validateRequest, EmailValidator, PhoneValidator, PasswordValidator } from '@rohit-jain11/validator';
-import { PasswordHash, TotpService } from '@rohit-jain11/auth';
+import { validateRequest, EmailValidator, PhoneValidator, PasswordValidator } from '@helpful-insight/validator';
+import { PasswordHash, TotpService } from '@helpful-insight/auth';
 import { prisma } from '../prisma.js';
 import {
   jwtService,

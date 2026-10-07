@@ -748,7 +748,7 @@ function createAuthMiddleware(jwtService, defaultOptions = {}) {
 }
 
 // src/router.ts
-var import_validator = require("@rohit-jain11/validator");
+var import_validator = require("@helpful-insight/validator");
 function createAuthRouter(options) {
   const router = (0, import_express.Router)();
   const store = options.userStore || (options.prisma ? new PrismaAuthUserStore(options.prisma) : new MemoryAuthUserStore());

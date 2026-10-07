@@ -1,6 +1,6 @@
-# @rohit-jain11/i18n
+# @helpful-insight/i18n
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/i18n.svg)](https://www.npmjs.com/package/@rohit-jain11/i18n)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/i18n.svg)](https://www.npmjs.com/package/@helpful-insight/i18n)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -34,13 +34,13 @@ Environment-driven Internationalization (i18n) and localization service for **No
 
 ```bash
 # npm
-npm install @rohit-jain11/i18n
+npm install @helpful-insight/i18n
 
 # pnpm
-pnpm add @rohit-jain11/i18n
+pnpm add @helpful-insight/i18n
 
 # yarn
-yarn add @rohit-jain11/i18n
+yarn add @helpful-insight/i18n
 ```
 
 ---
@@ -48,7 +48,7 @@ yarn add @rohit-jain11/i18n
 ## 🚀 Quick Start
 
 ```typescript
-import { I18nService } from '@rohit-jain11/i18n';
+import { I18nService } from '@helpful-insight/i18n';
 
 const i18n = new I18nService({
   defaultLocale: 'en',
@@ -98,7 +98,7 @@ Use `createI18nMiddleware` to enable automatic multi-language detection on all i
 
 ```typescript
 import express from 'express';
-import { createI18nMiddleware, I18nService } from '@rohit-jain11/i18n';
+import { createI18nMiddleware, I18nService } from '@helpful-insight/i18n';
 
 const app = express();
 

@@ -1,6 +1,6 @@
-# @rohit-jain11/auth
+# @helpful-insight/auth
 
-[![npm version](https://img.shields.io/npm/v/@rohit-jain11/auth.svg)](https://www.npmjs.com/package/@rohit-jain11/auth)
+[![npm version](https://img.shields.io/npm/v/@helpful-insight/auth.svg)](https://www.npmjs.com/package/@helpful-insight/auth)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -33,13 +33,13 @@ Enterprise-grade authentication and session management engine for **Node.js, Exp
 
 ```bash
 # npm
-npm install @rohit-jain11/auth
+npm install @helpful-insight/auth
 
 # pnpm
-pnpm add @rohit-jain11/auth
+pnpm add @helpful-insight/auth
 
 # yarn
-yarn add @rohit-jain11/auth
+yarn add @helpful-insight/auth
 ```
 
 ---
@@ -48,7 +48,7 @@ yarn add @rohit-jain11/auth
 
 ### 1. Password Hashing
 ```typescript
-import { PasswordHash } from '@rohit-jain11/auth';
+import { PasswordHash } from '@helpful-insight/auth';
 
 // Hash password
 const hash = await PasswordHash.hash('MySecurePassword123!', 10);
@@ -59,7 +59,7 @@ const isValid = await PasswordHash.compare('MySecurePassword123!', hash); // tru
 
 ### 2. JWT Access & Refresh Tokens
 ```typescript
-import { JwtService } from '@rohit-jain11/auth';
+import { JwtService } from '@helpful-insight/auth';
 
 const jwt = new JwtService({
   accessSecret: process.env.JWT_ACCESS_SECRET!,
@@ -82,7 +82,7 @@ console.log(payload.sub); // "user_123"
 
 ### 3. Two-Factor Authentication (TOTP)
 ```typescript
-import { TotpService } from '@rohit-jain11/auth';
+import { TotpService } from '@helpful-insight/auth';
 
 // 1. Generate user secret & QR code URI
 const secret = TotpService.generateSecret();
@@ -110,7 +110,7 @@ import {
   MemoryAuthUserStore,
   MemorySessionStore,
   authenticateJwt
-} from '@rohit-jain11/auth';
+} from '@helpful-insight/auth';
 
 const app = express();
 app.use(express.json());
@@ -126,7 +126,7 @@ app.use('/api/auth', createAuthRouter({
   sessionStore: new MemorySessionStore(),     // Or your PrismaSessionStore
   jwtService,
   onSendPasswordResetMail: async ({ email, resetToken }) => {
-    // Send email using @rohit-jain11/mailer
+    // Send email using @helpful-insight/mailer
     console.log(`Reset token for ${email}: ${resetToken}`);
   }
 }));

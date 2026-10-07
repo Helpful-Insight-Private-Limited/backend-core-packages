@@ -5,7 +5,7 @@ import { TotpService } from './totp.js';
 import { ISessionStore } from './sessions.js';
 import { IAuthUserStore, PrismaAuthUserStore, MemoryAuthUserStore } from './user-store.js';
 import { createAuthMiddleware } from './express.js';
-import { EmailValidator, PhoneValidator } from '@rohit-jain11/validator';
+import { EmailValidator, PhoneValidator } from '@helpful-insight/validator';
 
 export interface SendMailHookOptions {
   to: string;
