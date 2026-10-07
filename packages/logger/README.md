@@ -157,4 +157,4 @@ model AuditLog {
 
 ## 📄 License
 
-MIT © [Rohit Jain](https://github.com/Rohit-Jain11)
+MIT © Helpful Insight Private Limited
