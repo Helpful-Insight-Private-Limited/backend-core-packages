@@ -28,6 +28,9 @@ export interface AuthRouterOptions {
   onUserRegistered?: (user: any, req: Request) => Promise<void> | void;
   onUserLoggedIn?: (user: any, req: Request) => Promise<void> | void;
   onPasswordReset?: (user: any, req: Request) => Promise<void> | void;
+  exposeResetTokenInResponse?: boolean;
+  maxMfaAttempts?: number;
+  mfaLockoutMs?: number;
 }
 
 export function createAuthRouter(options: AuthRouterOptions): Router {
@@ -44,7 +47,44 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
   const resetUrlBase = options.resetPasswordUrl || 'http://localhost:3000/reset-password';
   const resetTokenExpires = options.resetTokenExpiresIn || '15m';
 
-  const { authenticateJwt } = createAuthMiddleware(jwt);
+  const { authenticateJwt, requireMfaVerification } = createAuthMiddleware(jwt);
+
+  // In-memory rate limiting and lockout for MFA verification attempts
+  const mfaAttemptTracker = new Map<string, { attempts: number; lockedUntil?: number }>();
+  const maxMfaAttempts = options.maxMfaAttempts || 5;
+  const mfaLockoutMs = options.mfaLockoutMs || 5 * 60 * 1000;
+
+  const checkMfaRateLimit = (key: string): boolean => {
+    const entry = mfaAttemptTracker.get(key);
+    if (!entry) return true;
+    if (entry.lockedUntil && entry.lockedUntil > Date.now()) {
+      return false;
+    }
+    if (entry.lockedUntil && entry.lockedUntil <= Date.now()) {
+      mfaAttemptTracker.delete(key);
+      return true;
+    }
+    return true;
+  };
+
+  const recordMfaFailure = (key: string): { locked: boolean } => {
+    let entry = mfaAttemptTracker.get(key);
+    if (!entry || (entry.lockedUntil && entry.lockedUntil <= Date.now())) {
+      entry = { attempts: 0 };
+    }
+    entry.attempts++;
+    if (entry.attempts >= maxMfaAttempts) {
+      entry.lockedUntil = Date.now() + mfaLockoutMs;
+      mfaAttemptTracker.set(key, entry);
+      return { locked: true };
+    }
+    mfaAttemptTracker.set(key, entry);
+    return { locked: false };
+  };
+
+  const clearMfaAttempts = (key: string) => {
+    mfaAttemptTracker.delete(key);
+  };
 
   // Helper response
   const sendSuccess = (res: Response, data: any, statusCode = 200) => {
@@ -188,15 +228,61 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
 
       // Check if 2FA is required
       if (user.isMfaEnabled) {
-        const tempToken = jwt.generateAccessToken(
-          { sub: user.id, email: user.email, isMfaVerified: false },
-          '5m'
-        );
-        return sendSuccess(res, {
-          mfaRequired: true,
-          tempToken,
-          message: 'Two-Factor Authentication is enabled. Please submit 6-digit TOTP code.'
-        });
+        const code = req.body.totpCode || req.body.mfaCode;
+        if (!code) {
+          const tempToken = jwt.generateAccessToken(
+            { sub: user.id, email: user.email, isMfaVerified: false, purpose: 'mfa_pending' },
+            '5m'
+          );
+          return sendSuccess(res, {
+            mfaRequired: true,
+            tempToken,
+            message: 'Two-Factor Authentication is enabled. Please submit 6-digit TOTP code.'
+          });
+        }
+
+        if (!checkMfaRateLimit(user.id)) {
+          return sendError(
+            res,
+            'TOO_MANY_ATTEMPTS',
+            'Too many failed verification attempts. Please wait 5 minutes before trying again.',
+            429
+          );
+        }
+
+        let isMfaValid = user.mfaSecret ? TotpService.verifyToken(String(code), user.mfaSecret) : false;
+        if (!isMfaValid && user.mfaBackupCodes) {
+          try {
+            const storedCodes = JSON.parse(user.mfaBackupCodes);
+            const backupRes = TotpService.verifyBackupCode(String(code), storedCodes);
+            if (backupRes.isValid) {
+              isMfaValid = true;
+              await store.updateMfa(user.id, {
+                mfaBackupCodes: JSON.stringify(backupRes.remainingHashedCodes)
+              });
+            }
+          } catch {}
+        }
+
+        if (!isMfaValid) {
+          const { locked } = recordMfaFailure(user.id);
+          if (locked) {
+            return sendError(
+              res,
+              'TOO_MANY_ATTEMPTS',
+              'Too many failed verification attempts. Account locked for 5 minutes.',
+              429
+            );
+          }
+          return sendError(
+            res,
+            'INVALID_MFA_TOKEN',
+            'Verification code is incorrect or expired',
+            400
+          );
+        }
+
+        clearMfaAttempts(user.id);
       }
 
       const roles = user.roles || [defaultRole];
@@ -264,11 +350,12 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         });
       }
 
-      // Generate signed password reset JWT token with dedicated secret and purpose
+      // Generate signed password reset JWT token with dedicated secret and bound to current passwordHash
       const resetToken = jwt.generateResetToken(
         {
           sub: user.id,
-          email: user.email
+          email: user.email,
+          passwordHash: user.passwordHash
         },
         resetTokenExpires
       );
@@ -291,8 +378,8 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
           'If an account associated with this email exists, a password reset link has been sent.'
       };
 
-      // In non-production, include token in payload for effortless testing
-      if (process.env.NODE_ENV !== 'production') {
+      // Only include token in response if explicitly enabled for testing
+      if (options.exposeResetTokenInResponse && process.env.NODE_ENV !== 'production') {
         responsePayload.debug = { resetToken, resetUrl };
       }
 
@@ -342,6 +429,16 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         return sendError(res, 'USER_NOT_FOUND', 'User does not exist', 404);
       }
 
+      // Replay prevention: verify the token was issued for the CURRENT password hash
+      if (payload.passwordHash && payload.passwordHash !== user.passwordHash) {
+        return sendError(
+          res,
+          'RESET_TOKEN_USED',
+          'Password reset link has already been used or has expired. Please request a new one.',
+          400
+        );
+      }
+
       // Hash and update password
       const newPasswordHash = await PasswordHash.hash(newPassword);
       await store.updatePassword(user.id, newPasswordHash);
@@ -386,12 +483,22 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         return sendError(res, 'USER_NOT_FOUND', 'User not found', 404);
       }
 
+      // If user has MFA enabled, ensure that the refresh token was issued with MFA verified
+      if (user.isMfaEnabled && !payload.isMfaVerified) {
+        return sendError(
+          res,
+          'MFA_REQUIRED',
+          'Two-Factor Authentication verification is required',
+          403
+        );
+      }
+
       const roles = user.roles || [defaultRole];
       const newTokens = jwt.generateTokenPair({
         sub: user.id,
         email: user.email,
         roles,
-        isMfaVerified: true
+        isMfaVerified: user.isMfaEnabled ? Boolean(payload.isMfaVerified) : true
       });
 
       if (session) {
@@ -453,36 +560,62 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
   // -------------------------------------------------------------
   const handleMfaSetup = async (req: Request, res: Response) => {
     const userId = req.user!.sub;
+    const user = await store.findById(userId);
+    if (!user) {
+      return sendError(res, 'USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    // Protection against unauthorized MFA overwrite (BUG-01)
+    if (user.isMfaEnabled && !req.user!.isMfaVerified) {
+      return sendError(
+        res,
+        'MFA_REQUIRED',
+        'You must verify existing Two-Factor Authentication before setting up a new one',
+        403
+      );
+    }
+
     const secret = TotpService.generateSecret();
     const uri = TotpService.getOtpAuthUri({
       issuer: 'EnterpriseAuth',
-      accountName: req.user!.email || userId,
+      accountName: user.email || userId,
       secret
     });
     const backupCodes = TotpService.generateBackupCodes(8);
+    // Securely hash backup codes before storing (BUG-06)
+    const hashedBackupCodes = backupCodes.map((code) => TotpService.hashBackupCode(code));
 
     await store.updateMfa(userId, {
       mfaSecret: secret,
-      mfaBackupCodes: JSON.stringify(backupCodes)
+      mfaBackupCodes: JSON.stringify(hashedBackupCodes)
     });
 
     sendSuccess(res, {
       secret,
       otpAuthUri: uri,
       backupCodes,
-      instructions: 'Add secret to your authenticator app, then call /mfa/verify'
+      instructions: 'Add secret to your authenticator app, save backup codes securely, then call /mfa/verify'
     });
   };
 
-  router.post('/mfa/setup', authenticateJwt(), handleMfaSetup);
-  router.post('/2fa/setup', authenticateJwt(), handleMfaSetup);
+  router.post('/mfa/setup', authenticateJwt(), requireMfaVerification(), handleMfaSetup);
+  router.post('/2fa/setup', authenticateJwt(), requireMfaVerification(), handleMfaSetup);
 
   const handleMfaVerify = async (req: Request, res: Response) => {
     const userId = req.user!.sub;
     const { token } = req.body;
 
     if (!token || typeof token !== 'string') {
-      return sendError(res, 'TOKEN_REQUIRED', '6-digit TOTP code is required', 400);
+      return sendError(res, 'TOKEN_REQUIRED', '6-digit TOTP code or backup code is required', 400);
+    }
+
+    if (!checkMfaRateLimit(userId)) {
+      return sendError(
+        res,
+        'TOO_MANY_ATTEMPTS',
+        'Too many failed verification attempts. Please wait 5 minutes before trying again.',
+        429
+      );
     }
 
     const user = await store.findById(userId);
@@ -490,8 +623,34 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
       return sendError(res, 'MFA_NOT_SETUP', 'Please call /mfa/setup first', 400);
     }
 
-    const isValid = TotpService.verifyToken(token, user.mfaSecret);
+    let isValid = TotpService.verifyToken(token, user.mfaSecret);
+    let usedBackupCode = false;
+
+    // Check backup codes if TOTP fails or code format matches backup code
+    if (!isValid && user.mfaBackupCodes) {
+      try {
+        const storedCodes: string[] = JSON.parse(user.mfaBackupCodes);
+        const backupResult = TotpService.verifyBackupCode(token, storedCodes);
+        if (backupResult.isValid) {
+          isValid = true;
+          usedBackupCode = true;
+          await store.updateMfa(userId, {
+            mfaBackupCodes: JSON.stringify(backupResult.remainingHashedCodes)
+          });
+        }
+      } catch {}
+    }
+
     if (!isValid) {
+      const { locked } = recordMfaFailure(userId);
+      if (locked) {
+        return sendError(
+          res,
+          'TOO_MANY_ATTEMPTS',
+          'Too many failed verification attempts. Account locked for 5 minutes.',
+          429
+        );
+      }
       return sendError(
         res,
         'INVALID_MFA_TOKEN',
@@ -500,12 +659,40 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
       );
     }
 
-    await store.updateMfa(userId, { isMfaEnabled: true });
-    sendSuccess(res, { message: 'Two-Factor Authentication is now enabled!' });
+    clearMfaAttempts(userId);
+
+    const wasAlreadyEnabled = user.isMfaEnabled;
+    if (!wasAlreadyEnabled) {
+      await store.updateMfa(userId, { isMfaEnabled: true });
+    }
+
+    const roles = user.roles || [defaultRole];
+    const tokens = jwt.generateTokenPair({
+      sub: user.id,
+      email: user.email,
+      roles,
+      isMfaVerified: true
+    });
+
+    if (session) {
+      await session.saveRefreshToken(
+        user.id,
+        tokens.refreshToken,
+        new Date(Date.now() + 7 * 24 * 3600 * 1000),
+        req.get('user-agent')
+      );
+    }
+
+    sendSuccess(res, {
+      message: wasAlreadyEnabled
+        ? 'Two-Factor Authentication verified successfully'
+        : 'Two-Factor Authentication is now enabled!',
+      tokens
+    });
   };
 
-  router.post('/mfa/verify', authenticateJwt(), handleMfaVerify);
-  router.post('/2fa/verify', authenticateJwt(), handleMfaVerify);
+  router.post('/mfa/verify', authenticateJwt({ allowedPurposes: ['access', 'mfa_pending'] }), handleMfaVerify);
+  router.post('/2fa/verify', authenticateJwt({ allowedPurposes: ['access', 'mfa_pending'] }), handleMfaVerify);
 
   return router;
 }

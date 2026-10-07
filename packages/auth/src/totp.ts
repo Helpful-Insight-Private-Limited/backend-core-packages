@@ -125,4 +125,50 @@ export class TotpService {
     }
     return codes;
   }
+
+  /**
+   * Cryptographically hash a single backup code using SHA-256 before database storage.
+   */
+  static hashBackupCode(code: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(code.trim().toUpperCase().replace(/\s+/g, ''))
+      .digest('hex');
+  }
+
+  /**
+   * Verify an input code against a list of hashed backup codes in constant time.
+   * Returns whether it matched and the updated list of remaining hashed codes (single-use).
+   */
+  static verifyBackupCode(
+    inputCode: string,
+    hashedCodes: string[]
+  ): { isValid: boolean; remainingHashedCodes: string[] } {
+    if (!inputCode || !hashedCodes || !Array.isArray(hashedCodes)) {
+      return { isValid: false, remainingHashedCodes: hashedCodes || [] };
+    }
+
+    const hashedInput = this.hashBackupCode(inputCode);
+    const inputBuf = Buffer.from(hashedInput);
+
+    let matchIndex = -1;
+    for (let i = 0; i < hashedCodes.length; i++) {
+      const storedBuf = Buffer.from(hashedCodes[i]);
+      if (
+        storedBuf.length === inputBuf.length &&
+        crypto.timingSafeEqual(storedBuf, inputBuf)
+      ) {
+        matchIndex = i;
+        break;
+      }
+    }
+
+    if (matchIndex === -1) {
+      return { isValid: false, remainingHashedCodes: hashedCodes };
+    }
+
+    const remaining = [...hashedCodes];
+    remaining.splice(matchIndex, 1);
+    return { isValid: true, remainingHashedCodes: remaining };
+  }
 }

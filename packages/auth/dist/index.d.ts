@@ -12,6 +12,7 @@ interface AuthTokenPayload {
     permissions?: string[];
     isMfaVerified?: boolean;
     sessionId?: string;
+    purpose?: string;
     [key: string]: any;
 }
 interface JwtServiceOptions {
@@ -35,13 +36,16 @@ declare class JwtService {
     private audience?;
     constructor(options: JwtServiceOptions);
     generateAccessToken(payload: AuthTokenPayload, customExpiresIn?: string | number): string;
-    generateRefreshToken(payload: Pick<AuthTokenPayload, 'sub' | 'sessionId'>, customExpiresIn?: string | number): string;
+    generateRefreshToken(payload: Pick<AuthTokenPayload, 'sub' | 'sessionId'> & {
+        isMfaVerified?: boolean;
+        [key: string]: any;
+    }, customExpiresIn?: string | number): string;
     generateTokenPair(payload: AuthTokenPayload): {
         accessToken: string;
         refreshToken: string;
         expiresInSeconds: number;
     };
-    verifyAccessToken<T = AuthTokenPayload>(token: string): T;
+    verifyAccessToken<T = AuthTokenPayload>(token: string, allowedPurposes?: string[]): T;
     verifyRefreshToken<T = AuthTokenPayload>(token: string): T;
     generateResetToken(payload: AuthTokenPayload, customExpiresIn?: string | number): string;
     verifyResetToken<T = AuthTokenPayload>(token: string): T;
@@ -80,6 +84,18 @@ declare class TotpService {
      * Generate emergency recovery backup codes (e.g. 10 codes).
      */
     static generateBackupCodes(count?: number): string[];
+    /**
+     * Cryptographically hash a single backup code using SHA-256 before database storage.
+     */
+    static hashBackupCode(code: string): string;
+    /**
+     * Verify an input code against a list of hashed backup codes in constant time.
+     * Returns whether it matched and the updated list of remaining hashed codes (single-use).
+     */
+    static verifyBackupCode(inputCode: string, hashedCodes: string[]): {
+        isValid: boolean;
+        remainingHashedCodes: string[];
+    };
 }
 
 interface OAuthProfile {
@@ -228,6 +244,9 @@ interface AuthRouterOptions {
     onUserRegistered?: (user: any, req: Request) => Promise<void> | void;
     onUserLoggedIn?: (user: any, req: Request) => Promise<void> | void;
     onPasswordReset?: (user: any, req: Request) => Promise<void> | void;
+    exposeResetTokenInResponse?: boolean;
+    maxMfaAttempts?: number;
+    mfaLockoutMs?: number;
 }
 declare function createAuthRouter(options: AuthRouterOptions): Router;
 
@@ -243,6 +262,7 @@ declare global {
 interface AuthenticateJwtOptions {
     allowAnonymous?: boolean;
     getToken?: (req: Request) => string | undefined;
+    allowedPurposes?: string[];
 }
 declare function createAuthMiddleware(jwtService: JwtService, defaultOptions?: AuthenticateJwtOptions): {
     authenticateJwt: (options?: AuthenticateJwtOptions) => RequestHandler;

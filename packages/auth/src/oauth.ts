@@ -54,6 +54,10 @@ export class GoogleOAuthHelper {
     }
 
     const userData = (await userRes.json()) as any;
+    if (!userData.email_verified) {
+      throw new Error('Google account email is not verified');
+    }
+
     return {
       provider: 'google',
       providerId: userData.sub,
@@ -123,8 +127,13 @@ export class GithubOAuthHelper {
         }
       });
       const emails = (await emailsRes.json()) as any[];
-      const primary = emails.find((e) => e.primary && e.verified);
-      email = primary ? primary.email : emails[0]?.email;
+      const verifiedPrimary = emails.find((e) => e.primary && e.verified);
+      const verifiedAny = emails.find((e) => e.verified);
+      const selected = verifiedPrimary || verifiedAny;
+      if (!selected) {
+        throw new Error('No verified email found on GitHub account');
+      }
+      email = selected.email;
     }
 
     return {

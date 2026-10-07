@@ -136,26 +136,33 @@ export class PrismaSessionStore implements ISessionStore {
   ): Promise<StoredRefreshToken | null> {
     if (!this.prisma?.refreshToken) return null;
 
-    const existing = await this.prisma.refreshToken.findUnique({
-      where: { token: oldToken }
+    // Atomic conditional update to eliminate TOCTOU concurrency race conditions
+    const updateRes = await this.prisma.refreshToken.updateMany({
+      where: {
+        token: oldToken,
+        isRevoked: false,
+        expiresAt: { gt: new Date() }
+      },
+      data: { isRevoked: true }
     });
 
-    if (!existing || existing.isRevoked || existing.expiresAt < new Date()) {
-      // Potential replay attack: revoke all user sessions
+    if (updateRes.count === 0) {
+      // Replay attack or already rotated: revoke all user sessions if record existed
+      const existing = await this.prisma.refreshToken.findUnique({
+        where: { token: oldToken }
+      });
       if (existing) {
         await this.revokeAllUserSessions(existing.userId);
       }
       return null;
     }
 
-    // Revoke old token
-    await this.prisma.refreshToken.update({
-      where: { token: oldToken },
-      data: { isRevoked: true }
+    const existing = await this.prisma.refreshToken.findUnique({
+      where: { token: oldToken }
     });
 
     // Create new token
-    return this.saveRefreshToken(existing.userId, newToken, newExpiresAt, existing.deviceInfo);
+    return this.saveRefreshToken(existing.userId, newToken, newExpiresAt, existing?.deviceInfo);
   }
 
   async revokeRefreshToken(token: string): Promise<boolean> {

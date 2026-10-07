@@ -12,6 +12,7 @@ declare global {
 export interface AuthenticateJwtOptions {
   allowAnonymous?: boolean;
   getToken?: (req: Request) => string | undefined;
+  allowedPurposes?: string[];
 }
 
 export function createAuthMiddleware(
@@ -20,6 +21,7 @@ export function createAuthMiddleware(
 ) {
   const authenticateJwt = (options: AuthenticateJwtOptions = {}): RequestHandler => {
     const opts = { ...defaultOptions, ...options };
+    const allowedPurposes = opts.allowedPurposes || ['access'];
 
     return (req: Request, res: Response, next: NextFunction): void => {
       let token: string | undefined;
@@ -48,10 +50,10 @@ export function createAuthMiddleware(
       }
 
       try {
-        const payload = jwtService.verifyAccessToken<AuthTokenPayload>(token);
+        const payload = jwtService.verifyAccessToken<AuthTokenPayload>(token, allowedPurposes);
 
-        // Reject non-access tokens (e.g. password_reset tokens)
-        if (payload.purpose && payload.purpose !== 'access') {
+        // Reject tokens with unauthorized purpose
+        if (payload.purpose && !allowedPurposes.includes(payload.purpose)) {
           res.status(401).json({
             success: false,
             error: {
@@ -68,10 +70,11 @@ export function createAuthMiddleware(
         if (opts.allowAnonymous) {
           return next();
         }
+        const isPurposeError = err.message && err.message.includes('invalid purpose');
         res.status(401).json({
           success: false,
           error: {
-            code: 'TOKEN_EXPIRED_OR_INVALID',
+            code: isPurposeError ? 'INVALID_TOKEN_PURPOSE' : 'TOKEN_EXPIRED_OR_INVALID',
             message: err.message || 'Token is invalid or has expired'
           }
         });

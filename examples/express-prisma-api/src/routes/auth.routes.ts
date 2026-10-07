@@ -8,7 +8,8 @@ import {
   mailService,
   templateEngine,
   notificationService,
-  authenticateJwt
+  authenticateJwt,
+  requireMfaVerification
 } from '../services.js';
 
 export const authRouter = Router();
@@ -161,14 +162,37 @@ authRouter.post('/login', async (req: Request, res: Response) => {
 
     const roles = user.roles.map((r: any) => r.role.name);
 
-    // If 2FA enabled, issue temporary MFA token
+    // If 2FA enabled, issue temporary MFA token unless code is supplied
     if (user.isMfaEnabled) {
-      const mfaTempToken = jwtService.generateAccessToken(
-        { sub: user.id, email: user.email, isMfaVerified: false },
-        '5m'
-      );
-      res.ok({ mfaRequired: true, tempToken: mfaTempToken });
-      return;
+      const code = req.body.totpCode || req.body.mfaCode;
+      if (!code) {
+        const mfaTempToken = jwtService.generateAccessToken(
+          { sub: user.id, email: user.email, isMfaVerified: false, purpose: 'mfa_pending' },
+          '5m'
+        );
+        res.ok({ mfaRequired: true, tempToken: mfaTempToken });
+        return;
+      }
+
+      let isMfaValid = user.mfaSecret ? TotpService.verifyToken(String(code), user.mfaSecret) : false;
+      if (!isMfaValid && user.mfaBackupCodes) {
+        try {
+          const storedCodes = JSON.parse(user.mfaBackupCodes);
+          const backupRes = TotpService.verifyBackupCode(String(code), storedCodes);
+          if (backupRes.isValid) {
+            isMfaValid = true;
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { mfaBackupCodes: JSON.stringify(backupRes.remainingHashedCodes) }
+            });
+          }
+        } catch {}
+      }
+
+      if (!isMfaValid) {
+        res.fail('INVALID_MFA_TOKEN', 'Verification code is invalid or has expired', 400);
+        return;
+      }
     }
 
     // Generate tokens
@@ -230,12 +254,17 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
       return;
     }
 
+    if (user.isMfaEnabled && !payload.isMfaVerified) {
+      res.fail('MFA_REQUIRED', 'Two-Factor Authentication verification is required', 403);
+      return;
+    }
+
     const roles = user.roles.map((r: any) => r.role.name);
     const newTokens = jwtService.generateTokenPair({
       sub: user.id,
       email: user.email,
       roles,
-      isMfaVerified: true
+      isMfaVerified: user.isMfaEnabled ? Boolean(payload.isMfaVerified) : true
     });
 
     const rotated = await sessionStore.rotateRefreshToken(
@@ -265,8 +294,14 @@ authRouter.post('/logout', async (req: Request, res: Response) => {
 });
 
 // 5. MFA: SETUP
-authRouter.post('/mfa/setup', authenticateJwt(), async (req: Request, res: Response) => {
+authRouter.post('/mfa/setup', authenticateJwt(), requireMfaVerification(), async (req: Request, res: Response) => {
   const userId = req.user!.sub;
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user?.isMfaEnabled && !req.user!.isMfaVerified) {
+    res.fail('MFA_REQUIRED', 'Please verify existing Two-Factor Authentication first', 403);
+    return;
+  }
+
   const secret = TotpService.generateSecret();
   const uri = TotpService.getOtpAuthUri({
     issuer: 'EnterpriseAPI',
@@ -274,12 +309,13 @@ authRouter.post('/mfa/setup', authenticateJwt(), async (req: Request, res: Respo
     secret
   });
   const backupCodes = TotpService.generateBackupCodes(8);
+  const hashedBackupCodes = backupCodes.map((c) => TotpService.hashBackupCode(c));
 
   await prisma.user.update({
     where: { id: userId },
     data: {
       mfaSecret: secret,
-      mfaBackupCodes: JSON.stringify(backupCodes)
+      mfaBackupCodes: JSON.stringify(hashedBackupCodes)
     }
   });
 
@@ -287,17 +323,17 @@ authRouter.post('/mfa/setup', authenticateJwt(), async (req: Request, res: Respo
     secret,
     otpAuthUri: uri,
     backupCodes,
-    instructions: 'Enter this secret or scan QR code in Google Authenticator, then call /mfa/verify'
+    instructions: 'Enter this secret or scan QR code in Google Authenticator, save backup codes safely, then call /mfa/verify'
   });
 });
 
 // 6. MFA: VERIFY & ACTIVATE
-authRouter.post('/mfa/verify', authenticateJwt(), async (req: Request, res: Response) => {
+authRouter.post('/mfa/verify', authenticateJwt({ allowedPurposes: ['access', 'mfa_pending'] }), async (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const { token } = req.body;
 
   if (!token) {
-    res.fail('TOKEN_REQUIRED', '6-digit code is required', 400);
+    res.fail('TOKEN_REQUIRED', '6-digit code or backup code is required', 400);
     return;
   }
 
@@ -307,16 +343,53 @@ authRouter.post('/mfa/verify', authenticateJwt(), async (req: Request, res: Resp
     return;
   }
 
-  const isValid = TotpService.verifyToken(token, user.mfaSecret);
+  let isValid = TotpService.verifyToken(token, user.mfaSecret);
+  if (!isValid && user.mfaBackupCodes) {
+    try {
+      const storedCodes = JSON.parse(user.mfaBackupCodes);
+      const backupRes = TotpService.verifyBackupCode(token, storedCodes);
+      if (backupRes.isValid) {
+        isValid = true;
+        await prisma.user.update({
+          where: { id: userId },
+          data: { mfaBackupCodes: JSON.stringify(backupRes.remainingHashedCodes) }
+        });
+      }
+    } catch {}
+  }
+
   if (!isValid) {
     res.fail('INVALID_MFA_TOKEN', 'Verification code is invalid or has expired', 400);
     return;
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { isMfaEnabled: true }
+  const wasAlreadyEnabled = user.isMfaEnabled;
+  if (!wasAlreadyEnabled) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isMfaEnabled: true }
+    });
+  }
+
+  const roles = user.roles?.map((r: any) => r.role.name) || [];
+  const tokenPair = jwtService.generateTokenPair({
+    sub: user.id,
+    email: user.email,
+    roles,
+    isMfaVerified: true
   });
 
-  res.ok({ message: 'Two-Factor Authentication is now enabled!' });
+  await sessionStore.saveRefreshToken(
+    user.id,
+    tokenPair.refreshToken,
+    new Date(Date.now() + 7 * 24 * 3600 * 1000),
+    req.get('user-agent')
+  );
+
+  res.ok({
+    message: wasAlreadyEnabled
+      ? 'Two-Factor Authentication verified successfully'
+      : 'Two-Factor Authentication is now enabled!',
+    tokens: tokenPair
+  });
 });

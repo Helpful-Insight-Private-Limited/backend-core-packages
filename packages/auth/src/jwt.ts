@@ -7,6 +7,7 @@ export interface AuthTokenPayload {
   permissions?: string[];
   isMfaVerified?: boolean;
   sessionId?: string;
+  purpose?: string;
   [key: string]: any;
 }
 
@@ -53,7 +54,7 @@ export class JwtService {
   }
 
   generateRefreshToken(
-    payload: Pick<AuthTokenPayload, 'sub' | 'sessionId'>,
+    payload: Pick<AuthTokenPayload, 'sub' | 'sessionId'> & { isMfaVerified?: boolean; [key: string]: any },
     customExpiresIn?: string | number
   ): string {
     const options: SignOptions = {
@@ -62,7 +63,7 @@ export class JwtService {
     };
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
-    return jwt.sign(payload, this.refreshSecret, options);
+    return jwt.sign({ purpose: 'refresh', ...payload }, this.refreshSecret, options);
   }
 
   generateTokenPair(payload: AuthTokenPayload): {
@@ -73,7 +74,8 @@ export class JwtService {
     const accessToken = this.generateAccessToken(payload);
     const refreshToken = this.generateRefreshToken({
       sub: payload.sub,
-      sessionId: payload.sessionId
+      sessionId: payload.sessionId,
+      isMfaVerified: payload.isMfaVerified
     });
 
     return {
@@ -83,18 +85,26 @@ export class JwtService {
     };
   }
 
-  verifyAccessToken<T = AuthTokenPayload>(token: string): T {
+  verifyAccessToken<T = AuthTokenPayload>(token: string, allowedPurposes: string[] = ['access']): T {
     const options: VerifyOptions = {};
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
-    return jwt.verify(token, this.accessSecret, options) as T;
+    const payload = jwt.verify(token, this.accessSecret, options) as any;
+    if (payload.purpose && !allowedPurposes.includes(payload.purpose)) {
+      throw new Error('Token is not valid for access (invalid purpose)');
+    }
+    return payload as T;
   }
 
   verifyRefreshToken<T = AuthTokenPayload>(token: string): T {
     const options: VerifyOptions = {};
     if (this.issuer) options.issuer = this.issuer;
     if (this.audience) options.audience = this.audience;
-    return jwt.verify(token, this.refreshSecret, options) as T;
+    const payload = jwt.verify(token, this.refreshSecret, options) as any;
+    if (payload.purpose !== 'refresh') {
+      throw new Error('Token is not valid for token refresh (invalid purpose)');
+    }
+    return payload as T;
   }
 
   generateResetToken(payload: AuthTokenPayload, customExpiresIn?: string | number): string {
