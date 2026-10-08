@@ -701,7 +701,11 @@ function createAuthMiddleware(jwtService, defaultOptions = {}) {
 }
 
 // src/router.ts
-import { EmailValidator, PhoneValidator } from "@helpful-insight/validator";
+import {
+  EmailValidator,
+  PhoneValidator,
+  PasswordValidator
+} from "@helpful-insight/validator";
 function createAuthRouter(options) {
   const router = Router();
   const store = options.userStore || (options.prisma ? new PrismaAuthUserStore(options.prisma) : new MemoryAuthUserStore());
@@ -763,17 +767,40 @@ function createAuthRouter(options) {
       if (!email || typeof email !== "string") {
         return sendError(res, "INVALID_EMAIL", "A valid email address is required", 400);
       }
-      const emailValidation = EmailValidator.validate(email);
+      const trimmedEmail = email.trim();
+      const emailValidation = EmailValidator.validate(trimmedEmail, options.emailValidationOptions);
       if (!emailValidation.isValid) {
         return sendError(res, "INVALID_EMAIL", emailValidation.error || "A valid email address is required", 400);
       }
-      if (phone) {
-        const phoneValidation = PhoneValidator.validate(String(phone));
+      const normalizedEmail = (emailValidation.normalizedEmail || trimmedEmail).toLowerCase();
+      let formattedPhone;
+      if (phone !== void 0 && phone !== null && String(phone).trim() !== "") {
+        const phoneValidation = PhoneValidator.validate(String(phone).trim(), options.phoneValidationOptions);
         if (!phoneValidation.isValid) {
           return sendError(res, "INVALID_PHONE", phoneValidation.error || "Invalid phone number format", 400);
         }
+        formattedPhone = phoneValidation.formats?.e164 || String(phone).trim();
       }
-      if (!password || typeof password !== "string" || password.length < 8) {
+      if (!password || typeof password !== "string") {
+        return sendError(
+          res,
+          "WEAK_PASSWORD",
+          "Password is required",
+          400
+        );
+      }
+      if (options.validatePassword !== false) {
+        const passwordValidation = PasswordValidator.validate(password, options.passwordPolicy);
+        if (!passwordValidation.isValid) {
+          const message = passwordValidation.suggestions[0] || "Password does not meet complexity requirements";
+          return sendError(
+            res,
+            "WEAK_PASSWORD",
+            message,
+            400
+          );
+        }
+      } else if (password.length < 8) {
         return sendError(
           res,
           "WEAK_PASSWORD",
@@ -781,7 +808,7 @@ function createAuthRouter(options) {
           400
         );
       }
-      const existing = await store.findByEmail(email);
+      const existing = await store.findByEmail(normalizedEmail);
       if (existing) {
         return sendError(
           res,
@@ -792,10 +819,10 @@ function createAuthRouter(options) {
       }
       const passwordHash = await PasswordHash.hash(password);
       const user = await store.create({
-        email,
+        email: normalizedEmail,
         passwordHash,
-        name,
-        phone,
+        name: name ? String(name).trim() : void 0,
+        phone: formattedPhone,
         role: defaultRole
       });
       const roles = user.roles || [defaultRole];
@@ -850,7 +877,8 @@ function createAuthRouter(options) {
           400
         );
       }
-      const user = await store.findByEmail(email);
+      const normalizedLoginEmail = String(email).trim().toLowerCase();
+      const user = await store.findByEmail(normalizedLoginEmail);
       if (!user || !user.passwordHash) {
         return sendError(res, "INVALID_CREDENTIALS", "Invalid email or password", 401);
       }
@@ -953,11 +981,13 @@ function createAuthRouter(options) {
       if (!email || typeof email !== "string") {
         return sendError(res, "EMAIL_REQUIRED", "Email is required", 400);
       }
-      const emailValidation = EmailValidator.validate(email);
+      const trimmedEmail = email.trim();
+      const emailValidation = EmailValidator.validate(trimmedEmail, options.emailValidationOptions);
       if (!emailValidation.isValid) {
         return sendError(res, "INVALID_EMAIL", emailValidation.error || "A valid email address is required", 400);
       }
-      const user = await store.findByEmail(email);
+      const normalizedEmail = (emailValidation.normalizedEmail || trimmedEmail).toLowerCase();
+      const user = await store.findByEmail(normalizedEmail);
       if (!user) {
         return sendSuccess(res, {
           message: "If an account associated with this email exists, a password reset link has been sent."
@@ -1000,7 +1030,26 @@ function createAuthRouter(options) {
       if (!token || typeof token !== "string") {
         return sendError(res, "TOKEN_REQUIRED", "Reset token is required", 400);
       }
-      if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
+      if (!newPassword || typeof newPassword !== "string") {
+        return sendError(
+          res,
+          "WEAK_PASSWORD",
+          "New password is required",
+          400
+        );
+      }
+      if (options.validatePassword !== false) {
+        const passwordValidation = PasswordValidator.validate(newPassword, options.passwordPolicy);
+        if (!passwordValidation.isValid) {
+          const message = passwordValidation.suggestions[0] || "New password does not meet complexity requirements";
+          return sendError(
+            res,
+            "WEAK_PASSWORD",
+            message,
+            400
+          );
+        }
+      } else if (newPassword.length < 8) {
         return sendError(
           res,
           "WEAK_PASSWORD",
@@ -1267,7 +1316,15 @@ model RefreshToken {
   createdAt  DateTime @default(now())
 }
 `;
+
+// src/index.ts
+import {
+  EmailValidator as EmailValidator2,
+  PhoneValidator as PhoneValidator2,
+  PasswordValidator as PasswordValidator2
+} from "@helpful-insight/validator";
 export {
+  EmailValidator2 as EmailValidator,
   GithubOAuthHelper,
   GoogleOAuthHelper,
   JwtService,
@@ -1275,6 +1332,8 @@ export {
   MemorySessionStore,
   PRISMA_AUTH_SCHEMA_SNIPPET,
   PasswordHash,
+  PasswordValidator2 as PasswordValidator,
+  PhoneValidator2 as PhoneValidator,
   PrismaAuthUserStore,
   PrismaSessionStore,
   TotpService,

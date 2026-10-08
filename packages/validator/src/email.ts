@@ -3,6 +3,8 @@ export interface EmailValidationOptions {
   checkTypo?: boolean;
   requireAlphanumericStartEnd?: boolean;
   validateProviderRules?: boolean;
+  disallowDummy?: boolean;
+  disallowConsecutiveSpecialChars?: boolean;
 }
 
 export interface EmailValidationResult {
@@ -61,6 +63,10 @@ export class EmailValidator {
       return { isValid: false, error: 'Email exceeds maximum length of 254 characters' };
     }
 
+    if (/\s/.test(trimmed)) {
+      return { isValid: false, error: 'Email address cannot contain whitespace' };
+    }
+
     if (!RFC5322_REGEX.test(trimmed)) {
       return { isValid: false, error: 'Invalid email address format' };
     }
@@ -74,8 +80,25 @@ export class EmailValidator {
     const lowerDomain = domainPart.toLowerCase();
     const normalizedEmail = `${localPart}@${lowerDomain}`;
 
+    const requireAlphanumericStartEnd = options.requireAlphanumericStartEnd !== false;
+    const validateProviderRules = options.validateProviderRules !== false;
+    const disallowDummy = options.disallowDummy !== false;
+    const disallowConsecutiveSpecialChars = options.disallowConsecutiveSpecialChars !== false;
+
+    // Consecutive special characters check (e.g. .., --, __, ++, or mixed combinations like .-)
+    if (disallowConsecutiveSpecialChars) {
+      if (/[._+\-]{2,}/.test(localPart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username cannot contain consecutive special characters'
+        };
+      }
+    }
+
     // Modern web validation: Local-part should start and end with alphanumeric characters
-    if (options.requireAlphanumericStartEnd !== false) {
+    if (requireAlphanumericStartEnd) {
       if (!/^[a-zA-Z0-9]/.test(localPart)) {
         return {
           isValid: false,
@@ -103,8 +126,83 @@ export class EmailValidator {
       }
     }
 
+    // Plus-addressing validation
+    if (localPart.includes('+')) {
+      const plusParts = localPart.split('+');
+      if (plusParts.length > 2) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username cannot contain multiple plus (+) symbols'
+        };
+      }
+      const tag = plusParts[1];
+      if (!tag || tag.length === 0) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email subaddress tag after plus (+) cannot be empty'
+        };
+      }
+      if (!/^[a-zA-Z0-9._-]+$/.test(tag) || !/^[a-zA-Z0-9]/.test(tag) || !/[a-zA-Z0-9]$/.test(tag)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email subaddress tag must start and end with an alphanumeric character'
+        };
+      }
+    }
+
+    // Dummy / Spam username pattern detection
+    if (disallowDummy) {
+      const basePart = localPart.includes('+') ? localPart.split('+')[0] : localPart;
+
+      // 1. All identical characters of length >= 4 (e.g. 000000000000, 111111, aaaaaa)
+      if (/^(.)\1{3,}$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username contains repeated dummy characters'
+        };
+      }
+
+      // 2. 5 or more identical characters in a row (e.g. ppppppppppppppppppppppppppp)
+      if (/(.)\1{4,}/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username contains repeated dummy characters'
+        };
+      }
+
+      // 3. Alternating 2-character repetitive pattern (e.g. 010101010101, ababababab)
+      if (basePart.length >= 6 && /^(.{2})\1{2,}$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username contains repetitive dummy pattern'
+        };
+      }
+
+      // 4. Alternating 3-character repetitive pattern (e.g. 123123123)
+      if (basePart.length >= 9 && /^(.{3})\1{2,}$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: 'Email username contains repetitive dummy pattern'
+        };
+      }
+    }
+
     // Provider-specific rules (e.g. Gmail only allows letters, numbers, and periods)
-    if (options.validateProviderRules !== false) {
+    if (validateProviderRules) {
       if (lowerDomain === 'gmail.com' || lowerDomain === 'googlemail.com') {
         const basePart = localPart.includes('+') ? localPart.split('+')[0] : localPart;
         if (/[^a-zA-Z0-9.]/.test(basePart)) {

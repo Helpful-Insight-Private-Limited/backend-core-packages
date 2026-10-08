@@ -261,8 +261,8 @@ importers:
   packages/auth:
     dependencies:
       '@helpful-insight/validator':
-        specifier: ^1.0.3
-        version: 1.0.3(express@4.22.3)
+        specifier: workspace:^
+        version: link:../validator
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
@@ -753,14 +753,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
-
-  '@helpful-insight/validator@1.0.3':
-    resolution: {integrity: sha512-/xnflkorwHE2IowoR6ioMp2cemDfnUBZuxKTJBH28waS64USn/7QyDck9F0kvT9fl6SrtHUDsEhtjUTSNOaJ5g==}
-    peerDependencies:
-      express: '>=4.0.0'
-    peerDependenciesMeta:
-      express:
-        optional: true
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2232,12 +2224,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
-
-  '@helpful-insight/validator@1.0.3(express@4.22.3)':
-    dependencies:
-      libphonenumber-js: 1.13.14
-    optionalDependencies:
-      express: 4.22.3
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

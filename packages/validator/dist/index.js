@@ -76,6 +76,9 @@ var EmailValidator = class {
     if (trimmed.length > 254) {
       return { isValid: false, error: "Email exceeds maximum length of 254 characters" };
     }
+    if (/\s/.test(trimmed)) {
+      return { isValid: false, error: "Email address cannot contain whitespace" };
+    }
     if (!RFC5322_REGEX.test(trimmed)) {
       return { isValid: false, error: "Invalid email address format" };
     }
@@ -86,7 +89,21 @@ var EmailValidator = class {
     const [localPart, domainPart] = parts;
     const lowerDomain = domainPart.toLowerCase();
     const normalizedEmail = `${localPart}@${lowerDomain}`;
-    if (options.requireAlphanumericStartEnd !== false) {
+    const requireAlphanumericStartEnd = options.requireAlphanumericStartEnd !== false;
+    const validateProviderRules = options.validateProviderRules !== false;
+    const disallowDummy = options.disallowDummy !== false;
+    const disallowConsecutiveSpecialChars = options.disallowConsecutiveSpecialChars !== false;
+    if (disallowConsecutiveSpecialChars) {
+      if (/[._+\-]{2,}/.test(localPart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username cannot contain consecutive special characters"
+        };
+      }
+    }
+    if (requireAlphanumericStartEnd) {
       if (!/^[a-zA-Z0-9]/.test(localPart)) {
         return {
           isValid: false,
@@ -113,7 +130,70 @@ var EmailValidator = class {
         };
       }
     }
-    if (options.validateProviderRules !== false) {
+    if (localPart.includes("+")) {
+      const plusParts = localPart.split("+");
+      if (plusParts.length > 2) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username cannot contain multiple plus (+) symbols"
+        };
+      }
+      const tag = plusParts[1];
+      if (!tag || tag.length === 0) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email subaddress tag after plus (+) cannot be empty"
+        };
+      }
+      if (!/^[a-zA-Z0-9._-]+$/.test(tag) || !/^[a-zA-Z0-9]/.test(tag) || !/[a-zA-Z0-9]$/.test(tag)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email subaddress tag must start and end with an alphanumeric character"
+        };
+      }
+    }
+    if (disallowDummy) {
+      const basePart = localPart.includes("+") ? localPart.split("+")[0] : localPart;
+      if (/^(.)\1{3,}$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username contains repeated dummy characters"
+        };
+      }
+      if (/(.)\1{4,}/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username contains repeated dummy characters"
+        };
+      }
+      if (basePart.length >= 6 && /^(.{2})\1{2,}$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username contains repetitive dummy pattern"
+        };
+      }
+      if (basePart.length >= 9 && /^(.{3})\1{2,}$/.test(basePart)) {
+        return {
+          isValid: false,
+          normalizedEmail,
+          domain: lowerDomain,
+          error: "Email username contains repetitive dummy pattern"
+        };
+      }
+    }
+    if (validateProviderRules) {
       if (lowerDomain === "gmail.com" || lowerDomain === "googlemail.com") {
         const basePart = localPart.includes("+") ? localPart.split("+")[0] : localPart;
         if (/[^a-zA-Z0-9.]/.test(basePart)) {
@@ -205,9 +285,9 @@ var PhoneValidator = class {
           error: `Phone number is a ${numberType.toLowerCase().replace(/_/g, " ")} number, but only mobile numbers are allowed`
         };
       }
-      if (options.disallowDummy && parsed.nationalNumber) {
+      if (options.disallowDummy !== false && parsed.nationalNumber) {
         const nat = parsed.nationalNumber;
-        if (/^(\d)\1+$/.test(nat) || /(\d)\1{5,}/.test(nat)) {
+        if (/^(\d)\1+$/.test(nat) || /(\d)\1{4,}/.test(nat)) {
           return {
             isValid: false,
             country: parsed.country,
@@ -215,6 +295,16 @@ var PhoneValidator = class {
             nationalNumber: nat,
             numberType,
             error: "Phone number contains repeated dummy digits"
+          };
+        }
+        if (nat.length >= 6 && /^(\d{2})\1{2,}$/.test(nat)) {
+          return {
+            isValid: false,
+            country: parsed.country,
+            countryCallingCode: parsed.countryCallingCode,
+            nationalNumber: nat,
+            numberType,
+            error: "Phone number contains repetitive dummy sequence"
           };
         }
         const sequences = ["0123456789", "9876543210"];
@@ -304,7 +394,8 @@ var PasswordValidator = class {
     requireNumbers: true,
     requireSpecialChars: true,
     disallowCommon: true,
-    disallowSequences: true
+    disallowSequences: true,
+    disallowRepetition: true
   };
   static validate(password, customPolicy) {
     const policy = { ...this.DEFAULT_POLICY, ...customPolicy };
@@ -365,6 +456,10 @@ var PasswordValidator = class {
           }
         }
       }
+    }
+    if (policy.disallowRepetition && /(.)\1{3,}/.test(password)) {
+      failedRules.push("disallow_repetition");
+      suggestions.push("Avoid repeating the same character 4 or more times consecutively.");
     }
     let score = 0;
     if (password.length >= policy.minLength) score++;

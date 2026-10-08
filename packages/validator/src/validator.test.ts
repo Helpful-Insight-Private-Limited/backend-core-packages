@@ -40,6 +40,21 @@ describe('@core/validator', () => {
       const res = EmailValidator.validate('alex@gmai.com');
       expect(res.suggestion).toBe('Did you mean alex@gmail.com?');
     });
+
+    it('should reject consecutive special characters and invalid plus tags', () => {
+      expect(EmailValidator.isValid('user--name@example.com')).toBe(false);
+      expect(EmailValidator.isValid('0-------------------00000000000+0@example.com')).toBe(false);
+      expect(EmailValidator.isValid('user__name@example.com')).toBe(false);
+      expect(EmailValidator.isValid('user++tag@example.com')).toBe(false);
+      expect(EmailValidator.isValid('user+tag+more@example.com')).toBe(false);
+      expect(EmailValidator.isValid('user+@example.com')).toBe(false);
+    });
+
+    it('should reject repetitive dummy email patterns by default', () => {
+      expect(EmailValidator.isValid('000000000000+0@example.com')).toBe(false);
+      expect(EmailValidator.isValid('010101010101@example.com')).toBe(false);
+      expect(EmailValidator.isValid('pppppppppppppppppppppppppppppppppppppppppp++++++++++++++++++++++@example.com')).toBe(false);
+    });
   });
 
   describe('PhoneValidator', () => {
@@ -51,10 +66,10 @@ describe('@core/validator', () => {
     });
 
     it('should validate national numbers when defaultCountry is provided', () => {
-      const res = PhoneValidator.validate('9876543210', 'IN');
+      const res = PhoneValidator.validate('9821357924', 'IN');
       expect(res.isValid).toBe(true);
       expect(res.country).toBe('IN');
-      expect(res.formats?.e164).toBe('+919876543210');
+      expect(res.formats?.e164).toBe('+919821357924');
     });
 
     it('should fail on invalid numbers', () => {
@@ -108,6 +123,16 @@ describe('@core/validator', () => {
     it('should detect common passwords', () => {
       const res = PasswordValidator.validate('password123');
       expect(res.failedRules).toContain('disallow_common');
+    });
+
+    it('should reject passwords with excessive repeating characters or missing classes', () => {
+      const plusRes = PasswordValidator.validate('++++++++++++++++');
+      expect(plusRes.isValid).toBe(false);
+      expect(plusRes.failedRules).toContain('disallow_repetition');
+
+      const numRes = PasswordValidator.validate('28268888');
+      expect(numRes.isValid).toBe(false);
+      expect(numRes.failedRules).toContain('disallow_repetition');
     });
 
     it('should generate valid strong passwords', () => {

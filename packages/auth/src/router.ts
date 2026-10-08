@@ -5,7 +5,14 @@ import { TotpService } from './totp.js';
 import { ISessionStore } from './sessions.js';
 import { IAuthUserStore, PrismaAuthUserStore, MemoryAuthUserStore } from './user-store.js';
 import { createAuthMiddleware } from './express.js';
-import { EmailValidator, PhoneValidator } from '@helpful-insight/validator';
+import {
+  EmailValidator,
+  PhoneValidator,
+  PasswordValidator,
+  PasswordPolicy,
+  EmailValidationOptions,
+  PhoneValidationOptions
+} from '@helpful-insight/validator';
 
 export interface SendMailHookOptions {
   to: string;
@@ -31,6 +38,10 @@ export interface AuthRouterOptions {
   exposeResetTokenInResponse?: boolean;
   maxMfaAttempts?: number;
   mfaLockoutMs?: number;
+  passwordPolicy?: PasswordPolicy;
+  validatePassword?: boolean; // Default: true
+  emailValidationOptions?: EmailValidationOptions;
+  phoneValidationOptions?: PhoneValidationOptions;
 }
 
 export function createAuthRouter(options: AuthRouterOptions): Router {
@@ -114,19 +125,43 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         return sendError(res, 'INVALID_EMAIL', 'A valid email address is required', 400);
       }
 
-      const emailValidation = EmailValidator.validate(email);
+      const trimmedEmail = email.trim();
+      const emailValidation = EmailValidator.validate(trimmedEmail, options.emailValidationOptions);
       if (!emailValidation.isValid) {
         return sendError(res, 'INVALID_EMAIL', emailValidation.error || 'A valid email address is required', 400);
       }
+      const normalizedEmail = (emailValidation.normalizedEmail || trimmedEmail).toLowerCase();
 
-      if (phone) {
-        const phoneValidation = PhoneValidator.validate(String(phone));
+      let formattedPhone: string | undefined;
+      if (phone !== undefined && phone !== null && String(phone).trim() !== '') {
+        const phoneValidation = PhoneValidator.validate(String(phone).trim(), options.phoneValidationOptions);
         if (!phoneValidation.isValid) {
           return sendError(res, 'INVALID_PHONE', phoneValidation.error || 'Invalid phone number format', 400);
         }
+        formattedPhone = phoneValidation.formats?.e164 || String(phone).trim();
       }
 
-      if (!password || typeof password !== 'string' || password.length < 8) {
+      if (!password || typeof password !== 'string') {
+        return sendError(
+          res,
+          'WEAK_PASSWORD',
+          'Password is required',
+          400
+        );
+      }
+
+      if (options.validatePassword !== false) {
+        const passwordValidation = PasswordValidator.validate(password, options.passwordPolicy);
+        if (!passwordValidation.isValid) {
+          const message = passwordValidation.suggestions[0] || 'Password does not meet complexity requirements';
+          return sendError(
+            res,
+            'WEAK_PASSWORD',
+            message,
+            400
+          );
+        }
+      } else if (password.length < 8) {
         return sendError(
           res,
           'WEAK_PASSWORD',
@@ -135,7 +170,7 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         );
       }
 
-      const existing = await store.findByEmail(email);
+      const existing = await store.findByEmail(normalizedEmail);
       if (existing) {
         return sendError(
           res,
@@ -147,10 +182,10 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
 
       const passwordHash = await PasswordHash.hash(password);
       const user = await store.create({
-        email,
+        email: normalizedEmail,
         passwordHash,
-        name,
-        phone,
+        name: name ? String(name).trim() : undefined,
+        phone: formattedPhone,
         role: defaultRole
       });
 
@@ -216,7 +251,8 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         );
       }
 
-      const user = await store.findByEmail(email);
+      const normalizedLoginEmail = String(email).trim().toLowerCase();
+      const user = await store.findByEmail(normalizedLoginEmail);
       if (!user || !user.passwordHash) {
         return sendError(res, 'INVALID_CREDENTIALS', 'Invalid email or password', 401);
       }
@@ -335,12 +371,14 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         return sendError(res, 'EMAIL_REQUIRED', 'Email is required', 400);
       }
 
-      const emailValidation = EmailValidator.validate(email);
+      const trimmedEmail = email.trim();
+      const emailValidation = EmailValidator.validate(trimmedEmail, options.emailValidationOptions);
       if (!emailValidation.isValid) {
         return sendError(res, 'INVALID_EMAIL', emailValidation.error || 'A valid email address is required', 400);
       }
 
-      const user = await store.findByEmail(email);
+      const normalizedEmail = (emailValidation.normalizedEmail || trimmedEmail).toLowerCase();
+      const user = await store.findByEmail(normalizedEmail);
 
       // Security practice: Always return generic message to prevent email enumeration
       if (!user) {
@@ -403,7 +441,27 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
         return sendError(res, 'TOKEN_REQUIRED', 'Reset token is required', 400);
       }
 
-      if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      if (!newPassword || typeof newPassword !== 'string') {
+        return sendError(
+          res,
+          'WEAK_PASSWORD',
+          'New password is required',
+          400
+        );
+      }
+
+      if (options.validatePassword !== false) {
+        const passwordValidation = PasswordValidator.validate(newPassword, options.passwordPolicy);
+        if (!passwordValidation.isValid) {
+          const message = passwordValidation.suggestions[0] || 'New password does not meet complexity requirements';
+          return sendError(
+            res,
+            'WEAK_PASSWORD',
+            message,
+            400
+          );
+        }
+      } else if (newPassword.length < 8) {
         return sendError(
           res,
           'WEAK_PASSWORD',
