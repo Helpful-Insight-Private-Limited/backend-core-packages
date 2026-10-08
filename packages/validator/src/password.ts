@@ -9,6 +9,7 @@ export interface PasswordPolicy {
   requireSpecialChars?: boolean;
   disallowCommon?: boolean;
   disallowSequences?: boolean;
+  disallowRepetition?: boolean;
 }
 
 export interface PasswordValidationResult {
@@ -60,7 +61,8 @@ export class PasswordValidator {
     requireNumbers: true,
     requireSpecialChars: true,
     disallowCommon: true,
-    disallowSequences: true
+    disallowSequences: true,
+    disallowRepetition: true
   };
 
   static validate(password: string, customPolicy?: PasswordPolicy): PasswordValidationResult {
@@ -135,6 +137,12 @@ export class PasswordValidator {
           }
         }
       }
+    }
+
+    // 5. Repetitive characters
+    if (policy.disallowRepetition && /(.)\1{3,}/.test(password)) {
+      failedRules.push('disallow_repetition');
+      suggestions.push('Avoid repeating the same character 4 or more times consecutively.');
     }
 
     // Calculate score (0-4)
