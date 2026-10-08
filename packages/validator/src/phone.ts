@@ -80,10 +80,10 @@ export class PhoneValidator {
         };
       }
 
-      if (options.disallowDummy && parsed.nationalNumber) {
+      if (options.disallowDummy !== false && parsed.nationalNumber) {
         const nat = parsed.nationalNumber;
-        // Repeated identical digits (e.g. 9999999999 or 5+ same digits in a row)
-        if (/^(\d)\1+$/.test(nat) || /(\d)\1{5,}/.test(nat)) {
+        // Repeated identical digits (e.g. 9999999999, 1111111111, or 5+ same digits in a row)
+        if (/^(\d)\1+$/.test(nat) || /(\d)\1{4,}/.test(nat)) {
           return {
             isValid: false,
             country: parsed.country,
@@ -91,6 +91,17 @@ export class PhoneValidator {
             nationalNumber: nat,
             numberType,
             error: 'Phone number contains repeated dummy digits'
+          };
+        }
+        // Alternating digits (e.g. 1212121212, 0101010101)
+        if (nat.length >= 6 && /^(\d{2})\1{2,}$/.test(nat)) {
+          return {
+            isValid: false,
+            country: parsed.country,
+            countryCallingCode: parsed.countryCallingCode,
+            nationalNumber: nat,
+            numberType,
+            error: 'Phone number contains repetitive dummy sequence'
           };
         }
         // Predictable sequences (e.g. 12345678, 98765432)

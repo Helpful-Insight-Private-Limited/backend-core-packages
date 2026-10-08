@@ -150,6 +150,76 @@ describe('@core/auth', () => {
       expect(doubleExclamationRes.body.error.code).toBe('INVALID_EMAIL');
     });
 
+    it('1c. POST /signup - should reject weak passwords with repetitive chars or missing complexity', async () => {
+      // Repetitive symbols
+      const plusRes = await request(app)
+        .post('/auth/signup')
+        .send({
+          email: 'user_valid1@example.com',
+          password: '++++++++++++++++'
+        });
+      expect(plusRes.status).toBe(400);
+      expect(plusRes.body.success).toBe(false);
+      expect(plusRes.body.error.code).toBe('WEAK_PASSWORD');
+
+      // Only numbers
+      const numRes = await request(app)
+        .post('/auth/signup')
+        .send({
+          email: 'user_valid2@example.com',
+          password: '28268888'
+        });
+      expect(numRes.status).toBe(400);
+      expect(numRes.body.success).toBe(false);
+      expect(numRes.body.error.code).toBe('WEAK_PASSWORD');
+    });
+
+    it('1d. POST /signup - should reject dummy and invalid phone numbers', async () => {
+      const dummyPhoneRes = await request(app)
+        .post('/auth/signup')
+        .send({
+          email: 'user_valid3@example.com',
+          password: 'Password123!',
+          phone: '+911111111111'
+        });
+      expect(dummyPhoneRes.status).toBe(400);
+      expect(dummyPhoneRes.body.success).toBe(false);
+      expect(dummyPhoneRes.body.error.code).toBe('INVALID_PHONE');
+
+      const repeatPhoneRes = await request(app)
+        .post('/auth/signup')
+        .send({
+          email: 'user_valid4@example.com',
+          password: 'Password123!',
+          phone: '+919999999999'
+        });
+      expect(repeatPhoneRes.status).toBe(400);
+      expect(repeatPhoneRes.body.success).toBe(false);
+      expect(repeatPhoneRes.body.error.code).toBe('INVALID_PHONE');
+    });
+
+    it('1e. POST /signup - should reject repetitive and dummy email formats', async () => {
+      const emailsToReject = [
+        '000000000000+0@example.com',
+        '0-------------------00000000000+0@example.com',
+        '010101010101@example.com',
+        '!!!01789076643@example.com',
+        'pppppppppppppppppppppppppppppppppppppppppp++++++++++++++++++++++@example.com'
+      ];
+
+      for (const email of emailsToReject) {
+        const res = await request(app)
+          .post('/auth/signup')
+          .send({
+            email,
+            password: 'Password123!'
+          });
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('INVALID_EMAIL');
+      }
+    });
+
     it('2. POST /login - should authenticate valid user', async () => {
       const res = await request(app)
         .post('/auth/login')
@@ -174,6 +244,28 @@ describe('@core/auth', () => {
       expect(lastSentResetMail.to).toBe('alice@example.com');
       expect(lastSentResetMail.resetToken).toBeDefined();
       resetToken = lastSentResetMail.resetToken;
+    });
+
+    it('4a. POST /reset-password - should reject weak or repetitive passwords', async () => {
+      const weakRes = await request(app)
+        .post('/auth/reset-password')
+        .send({
+          token: resetToken,
+          newPassword: '++++++++++++++++'
+        });
+      expect(weakRes.status).toBe(400);
+      expect(weakRes.body.success).toBe(false);
+      expect(weakRes.body.error.code).toBe('WEAK_PASSWORD');
+
+      const digitsRes = await request(app)
+        .post('/auth/reset-password')
+        .send({
+          token: resetToken,
+          newPassword: '28268888'
+        });
+      expect(digitsRes.status).toBe(400);
+      expect(digitsRes.body.success).toBe(false);
+      expect(digitsRes.body.error.code).toBe('WEAK_PASSWORD');
     });
 
     it('4. POST /reset-password - should reset password with valid token', async () => {

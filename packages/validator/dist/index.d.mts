@@ -6,6 +6,8 @@ interface EmailValidationOptions {
     checkTypo?: boolean;
     requireAlphanumericStartEnd?: boolean;
     validateProviderRules?: boolean;
+    disallowDummy?: boolean;
+    disallowConsecutiveSpecialChars?: boolean;
 }
 interface EmailValidationResult {
     isValid: boolean;
@@ -59,6 +61,7 @@ interface PasswordPolicy {
     requireSpecialChars?: boolean;
     disallowCommon?: boolean;
     disallowSequences?: boolean;
+    disallowRepetition?: boolean;
 }
 interface PasswordValidationResult {
     isValid: boolean;

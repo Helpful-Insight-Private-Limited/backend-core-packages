@@ -1,4 +1,6 @@
 import { Request, Router, RequestHandler } from 'express';
+import { PasswordPolicy, EmailValidationOptions, PhoneValidationOptions } from '@helpful-insight/validator';
+export { EmailValidationOptions, EmailValidator, PasswordPolicy, PasswordValidator, PhoneValidationOptions, PhoneValidator } from '@helpful-insight/validator';
 
 declare class PasswordHash {
     static hash(plainPassword: string, rounds?: number): Promise<string>;
@@ -247,6 +249,10 @@ interface AuthRouterOptions {
     exposeResetTokenInResponse?: boolean;
     maxMfaAttempts?: number;
     mfaLockoutMs?: number;
+    passwordPolicy?: PasswordPolicy;
+    validatePassword?: boolean;
+    emailValidationOptions?: EmailValidationOptions;
+    phoneValidationOptions?: PhoneValidationOptions;
 }
 declare function createAuthRouter(options: AuthRouterOptions): Router;
 
